@@ -12,6 +12,8 @@ import AddPeopleDialog
 import LobbyScreen from '../../../lobby/components/native/LobbyScreen';
 import ChatAndPollsNavigationContainer
     from '../../../mobile/navigation/components/chat/components/ChatAndPollsNavigationContainer';
+import LobbyNavigationContainer
+    from '../../../lobby/components/LobbyNavigationContainer';
 import { screen } from '../../../mobile/navigation/routes';
 import {
     chatScreenOptions,
@@ -149,6 +151,13 @@ const ConferenceTab = ({ onFocused }: Props) => {
                     ...gifsMenuOptions,
                     title: t('notify.gifsMenu')
                 }} />
+            <ConferenceStack.Screen
+                component = { LobbyNavigationContainer }
+                name = { screen.lobby.root }
+                options = {{
+                    gestureEnabled: false,
+                    headerShown: false
+                }} />          
             <ConferenceStack.Screen
                 component = { LobbyScreen }
                 name = { screen.lobby }
