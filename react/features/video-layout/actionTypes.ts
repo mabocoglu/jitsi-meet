@@ -30,3 +30,13 @@ export const FAKE_SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED = 'FAKE_SCREEN_SHARE_
  * }}
  */
 export const SET_TILE_VIEW = 'SET_TILE_VIEW';
+
+/**
+ * The type of the action which tells whether we are in carmode.
+ *
+ * @returns {{
+ *     type: SET_CARMODE,
+ *     enabled: boolean
+ * }}
+ */
+export const SET_CARMODE = ' SET_CARMODE';
