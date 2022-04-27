@@ -155,7 +155,7 @@ const ConferenceTab = ({ onFocused }: Props) => {
                 options = {{
                     gestureEnabled: false,
                     headerShown: false
-                }} />          
+                }} />
             <ConferenceStack.Screen
                 component = { AddPeopleDialog }
                 name = { screen.conference.invite }
