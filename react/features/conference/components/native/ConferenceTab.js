@@ -9,11 +9,10 @@ import { SharedDocument } from '../../../etherpad';
 import { GifsMenu } from '../../../gifs/components';
 import AddPeopleDialog
     from '../../../invite/components/add-people-dialog/native/AddPeopleDialog';
-import LobbyScreen from '../../../lobby/components/native/LobbyScreen';
 import ChatAndPollsNavigationContainer
     from '../../../mobile/navigation/components/chat/components/ChatAndPollsNavigationContainer';
 import LobbyNavigationContainer
-    from '../../../lobby/components/LobbyNavigationContainer';
+    from '../../../mobile/navigation/components/lobby/components/LobbyNavigationContainer';
 import { screen } from '../../../mobile/navigation/routes';
 import {
     chatScreenOptions,
@@ -21,7 +20,6 @@ import {
     gifsMenuOptions,
     inviteScreenOptions,
     liveStreamScreenOptions,
-    lobbyScreenOptions,
     participantsScreenOptions,
     recordingScreenOptions,
     salesforceScreenOptions,
@@ -158,10 +156,6 @@ const ConferenceTab = ({ onFocused }: Props) => {
                     gestureEnabled: false,
                     headerShown: false
                 }} />          
-            <ConferenceStack.Screen
-                component = { LobbyScreen }
-                name = { screen.lobby }
-                options = { lobbyScreenOptions } />
             <ConferenceStack.Screen
                 component = { AddPeopleDialog }
                 name = { screen.conference.invite }
