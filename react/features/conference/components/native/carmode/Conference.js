@@ -78,7 +78,7 @@ const CarmodeTab = ({ onFocused }: Props): JSX.Element => {
                 </View>
                 <ConferenceTimer textStyle = { styles.roomTimer } />
             </SafeAreaView>
-            <MicrophoneButton size = { 180 } />
+            <MicrophoneButton />
             <SafeAreaView
                 pointerEvents = 'box-none'
                 style = { styles.bottomContainer }>

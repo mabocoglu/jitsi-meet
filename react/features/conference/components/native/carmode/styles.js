@@ -3,7 +3,7 @@ import BaseTheme from '../../../../base/ui/components/BaseTheme.native';
 /**
  * The default size of the microphone icon.
  */
-const DEFAULT_MICROPHONE_SIZE = 65;
+const DEFAULT_MICROPHONE_SIZE = 180;
 
 const TITLE_BAR_BUTTON_SIZE = 24;
 
