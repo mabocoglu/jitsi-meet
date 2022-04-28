@@ -1,16 +1,14 @@
-import { useIsFocused } from '@react-navigation/native';
+import { TypedNavigator, useIsFocused } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Chat } from '../../../chat';
+import { Chat, ChatAndPolls } from '../../../chat';
 import { SharedDocument } from '../../../etherpad';
 import { GifsMenu } from '../../../gifs/components';
 import AddPeopleDialog
     from '../../../invite/components/add-people-dialog/native/AddPeopleDialog';
-import ChatAndPollsNavigationContainer
-    from '../../../mobile/navigation/components/chat/components/ChatAndPollsNavigationContainer';
 import LobbyNavigationContainer
     from '../../../mobile/navigation/components/lobby/components/LobbyNavigationContainer';
 import { screen } from '../../../mobile/navigation/routes';
@@ -42,7 +40,7 @@ import { getDisablePolls } from '../../functions';
 
 import Conference from './Conference';
 
-const ConferenceStack = createStackNavigator();
+const ConferenceStack : TypedNavigator = createStackNavigator();
 
 type Props = {
 
@@ -57,9 +55,10 @@ type Props = {
 /**
  * The main conference screen navigator.
  *
+ * @param {Props} props - The React props passed to this component.
  * @returns {JSX.Element} - The conference tab.
  */
-const ConferenceTab = ({ onFocused }: Props) => {
+const ConferenceTab = ({ onFocused }: Props) : JSX.Element => {
     const isFocused = useIsFocused();
     const dispatch = useDispatch();
     const isPollsDisabled = useSelector(getDisablePolls);
@@ -72,7 +71,7 @@ const ConferenceTab = ({ onFocused }: Props) => {
         chatScreenName = screen.conference.chat;
         chatTitleString = 'chat.title';
     } else {
-        ChatScreen = ChatAndPollsNavigationContainer;
+        ChatScreen = ChatAndPolls;
         chatScreenName = screen.conference.chatandpolls.main;
         chatTitleString = 'chat.titleWithPolls';
     }

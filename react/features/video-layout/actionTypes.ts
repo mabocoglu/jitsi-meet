@@ -35,8 +35,8 @@ export const SET_TILE_VIEW = 'SET_TILE_VIEW';
  * The type of the action which tells whether we are in carmode.
  *
  * @returns {{
- *     type: SET_CARMODE,
+ *     type: SET_CAR_MODE,
  *     enabled: boolean
  * }}
  */
-export const SET_CARMODE = ' SET_CARMODE';
+export const SET_CAR_MODE = ' SET_CAR_MODE';

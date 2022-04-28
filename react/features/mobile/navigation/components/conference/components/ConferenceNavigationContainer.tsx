@@ -1,5 +1,5 @@
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, TypedNavigator } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 
 import ConferenceTab from '../../../../../conference/components/native/ConferenceTab';
@@ -13,10 +13,15 @@ import {
 import NavigationThumb, { THUMBS } from './NavigationThumb';
 import styles from './styles';
 
-const ConferenceTabs = createMaterialTopTabNavigator();
+const ConferenceTabs: TypedNavigator = createMaterialTopTabNavigator();
 
-const ConferenceNavigationContainer = () => {
-    const [ selectedThumb, setSelectedThumb ] = useState(THUMBS.FIRST);
+/**
+ * Navigation container component for the conference.
+ *
+ * @returns {JSX.Element} - the container.
+ */
+const ConferenceNavigationContainer = () : JSX.Element => {
+    const [ selectedThumb , setSelectedThumb ] = useState(THUMBS.CONFERENCE_VIEW);
 
     /**
      * Lights up the correct bottom navigation circle
@@ -24,21 +29,21 @@ const ConferenceNavigationContainer = () => {
      */
     const onFocused = useCallback(selected => {
         if (selected === screen.car) {
-            setSelectedThumb(THUMBS.SECOND);
+            setSelectedThumb(THUMBS.CAR_VIEW);
         } else {
-            setSelectedThumb(THUMBS.FIRST);
+            setSelectedThumb(THUMBS.CONFERENCE_VIEW);
         }
-    });
+    }, []);
 
     const Carmode = useCallback(() => (
         <CarmodeTab
             onFocused = { onFocused } />
-    ));
+    ), []);
 
     const Conference = useCallback(() => (
         <ConferenceTab
             onFocused = { onFocused } />
-    ));
+    ), []);
 
     return (
         <NavigationContainer

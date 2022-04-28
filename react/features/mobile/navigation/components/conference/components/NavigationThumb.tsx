@@ -8,8 +8,8 @@ import { Icon, IconCircle } from '../../../../../base/icons';
 import styles, { ICON_ACTIVE_COLOR, ICON_INACTIVE_COLOR } from './styles';
 
 export const enum THUMBS {
-    FIRST = 'FIRST',
-    SECOND = 'SECOND'
+    CONFERENCE_VIEW  = 'CONFERENCE_VIEW ',
+    CAR_VIEW = 'CAR_VIEW'
 }
 
 type Props = {

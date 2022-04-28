@@ -1,5 +1,3 @@
-// @flow
-
 import React from 'react';
 import { Text, View } from 'react-native';
 
@@ -33,9 +31,9 @@ type Props = {
  * carmode screen.
  *
  * @param {Props} props - The React props passed to this component.
- * @returns {React.Node}
+ * @returns {JSX.Element}
  */
-const TitleBar = (props: Props) => (<>
+const TitleBar = (props: Props) : JSX.Element => (<>
     <View
         pointerEvents = 'box-none'
         style = { styles.titleBarWrapper }>
@@ -74,7 +72,7 @@ const TitleBar = (props: Props) => (<>
  * @param {Object} state - The Redux state.
  * @returns {Props}
  */
-function _mapStateToProps(state) {
+function _mapStateToProps(state: Object) {
     const { hideConferenceSubject } = state['features/base/config'];
 
     return {

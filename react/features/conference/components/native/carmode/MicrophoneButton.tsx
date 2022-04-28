@@ -16,7 +16,7 @@ type Props = {
     /**
      * The round button size.
      */
-    size: number
+    size?: number
 
 }
 

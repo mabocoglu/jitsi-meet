@@ -1,4 +1,4 @@
-import { SET_CARMODE } from './actionTypes';
+import { SET_CAR_MODE } from './actionTypes';
 
 export * from './actions.any';
 
@@ -7,13 +7,13 @@ export * from './actions.any';
  *
  * @param {boolean} enabled - Whether we are in carmode.
  * @returns {{
- *     type: SET_CARMODE,
+ *     type: SET_CAR_MODE,
  *    enabled: boolean
  * }}
  */
 export function setIsCarmode(enabled) {
     return {
-        type: SET_CARMODE,
+        type: SET_CAR_MODE,
         enabled
     };
 }

@@ -8,7 +8,7 @@ import { APP_STATE_CHANGED } from '../../mobile/background/actionTypes';
 import {
     FAKE_SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED,
     SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED,
-    SET_CARMODE,
+    SET_CAR_MODE,
     SET_TILE_VIEW
 } from '../../video-layout/actionTypes';
 import { SET_AUDIO_ONLY } from '../audio-only/actionTypes';
@@ -103,7 +103,7 @@ MiddlewareRegistry.register(store => next => action => {
     case SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED:
     case SELECT_LARGE_VIDEO_PARTICIPANT:
     case SET_AUDIO_ONLY:
-    case SET_CARMODE:
+    case SET_CAR_MODE:
     case SET_FILMSTRIP_ENABLED:
     case SET_TILE_VIEW:
         _updateLastN(store);

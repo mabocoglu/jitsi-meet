@@ -6,7 +6,7 @@ import {
     FAKE_SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED,
     SCREEN_SHARE_REMOTE_PARTICIPANTS_UPDATED,
     SET_TILE_VIEW,
-    SET_CARMODE
+    SET_CAR_MODE
 } from './actionTypes';
 
 const DEFAULT_STATE = {
@@ -50,7 +50,7 @@ ReducerRegistry.register(STORE_NAME, (state = DEFAULT_STATE, action) => {
             tileViewEnabled: action.enabled
         };
 
-    case SET_CARMODE:
+    case SET_CAR_MODE:
         return {
             ...state,
             carMode: action.enabled
