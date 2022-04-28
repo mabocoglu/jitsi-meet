@@ -1,9 +1,9 @@
 import BaseTheme from '../../../../base/ui/components/BaseTheme.native';
 
 /**
- * The default size of the microphone icon.
+ * The size of the microphone icon.
  */
-const DEFAULT_MICROPHONE_SIZE = 180;
+const MICROPHONE_SIZE = 180;
 
 const TITLE_BAR_BUTTON_SIZE = 24;
 
@@ -67,27 +67,23 @@ export default {
     },
 
     microphoneStyles: {
-        container: (size: number = DEFAULT_MICROPHONE_SIZE) => {
-            return {
-                borderRadius: size / 2,
-                height: size,
-                maxHeight: size,
-                justifyContent: 'center',
-                overflow: 'hidden',
-                width: size,
-                maxWidth: size,
-                flex: 1,
-                zIndex: 1,
-                elevation: 1
-            };
+        container: {
+            borderRadius: MICROPHONE_SIZE / 2,
+            height: MICROPHONE_SIZE,
+            maxHeight: MICROPHONE_SIZE,
+            justifyContent: 'center',
+            overflow: 'hidden',
+            width: MICROPHONE_SIZE,
+            maxWidth: MICROPHONE_SIZE,
+            flex: 1,
+            zIndex: 1,
+            elevation: 1
         },
 
-        icon: (size: number = DEFAULT_MICROPHONE_SIZE) => {
-            return {
-                color: BaseTheme.palette.text01,
-                fontSize: size * 0.45,
-                fontWeight: '100'
-            };
+        icon: {
+            color: BaseTheme.palette.text01,
+            fontSize: MICROPHONE_SIZE * 0.45,
+            fontWeight: '100'
         },
 
         iconContainer: {

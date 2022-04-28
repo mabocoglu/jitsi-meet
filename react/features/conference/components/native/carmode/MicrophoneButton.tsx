@@ -11,21 +11,12 @@ import { muteLocal } from '../../../../video-menu/actions';
 
 import styles from './styles';
 
-type Props = {
-
-    /**
-     * The round button size.
-     */
-    size?: number
-
-}
-
 /**
  * Implements a round audio mute/unmute button of a custom size.
  *
  * @returns {JSX.Element} - The audio mute round button.
  */
-const MicrophoneButton = ({ size }: Props) : JSX.Element => {
+const MicrophoneButton = () : JSX.Element => {
     const dispatch = useDispatch();
     const audioMuted = useSelector(state => isLocalTrackMuted(state['features/base/tracks'], MEDIA_TYPE.AUDIO));
     const disabled = useSelector(isAudioMuteButtonDisabled);
@@ -44,14 +35,14 @@ const MicrophoneButton = ({ size }: Props) : JSX.Element => {
             onPress = { toggleMute }>
             <View
                 style = { [
-                    styles.microphoneStyles.container(size),
+                    styles.microphoneStyles.container,
                     !audioMuted && styles.microphoneStyles.unmuted
                 ] }>
                 <View
                     style = { styles.microphoneStyles.iconContainer }>
                     <Icon
                         src = { audioMuted ? IconMicrophoneEmptySlash : IconMicrophone }
-                        style = { styles.microphoneStyles.icon(size) } />
+                        style = { styles.microphoneStyles.icon } />
                 </View>
             </View>
         </TouchableOpacity>
