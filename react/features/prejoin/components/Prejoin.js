@@ -440,7 +440,7 @@ function mapStateToProps(state, ownProps): Object {
         hasJoinByPhoneButton: isJoinByPhoneButtonVisible(state),
         showCameraPreview: !isVideoMutedByUser(state),
         showConferenceInfo,
-        videoTrack: getLocalJitsiVideoTrack(state)
+        videoTrack: getLocalJitsiVideoTrack(state, 'camera')
     };
 }
 

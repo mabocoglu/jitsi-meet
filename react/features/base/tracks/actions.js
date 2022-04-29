@@ -192,6 +192,43 @@ export function destroyLocalTracks() {
 }
 
 /**
+ * Calls JitsiLocalTrack#dispose() on all local tracks ignoring errors when
+ * track is already disposed. After that signals tracks to be removed.
+ *
+ * @returns {Function}
+ */
+export function destroyRemoteTracks() {
+
+    return (dispatch, getState) => {
+        // First wait until any getUserMedia in progress is settled and then get
+        // rid of all local tracks.
+        dispatch(
+            _disposeAndRemoveTracks(
+                getState()['features/base/tracks']
+                    .filter(t => !t.local)
+                    .map(t => t.jitsiTrack)));
+    };
+}
+
+/**
+ * Destroy the local screenshare 
+ *
+ * @returns {Function}
+ */
+export function destroyLocalVideoDesktopTrack() {
+
+    return (dispatch, getState) => {
+        // First wait until any getUserMedia in progress is settled and then get
+        // rid of all local tracks.
+        dispatch(
+            _disposeAndRemoveTracks(
+                getState()['features/base/tracks']
+                    .filter(t => t.local && t.isVideoTrack() && t.videoType === 'desktop')
+                    .map(t => t.jitsiTrack)));
+    };
+}
+
+/**
  * Signals that the passed JitsiLocalTrack has triggered a no data from source event.
  *
  * @param {JitsiLocalTrack} track - The track.
@@ -282,6 +319,51 @@ export function replaceLocalTrack(oldTrack, newTrack, conference) {
 }
 
 /**
+ * Remove local track
+ *
+ * @param {JitsiLocalTrack|null} track - The track to dispose.
+ * @param {JitsiConference} [conference] - The conference from which to remove
+ * and add the tracks. If one is not provided, the conference in the redux store
+ * will be used.
+ * @returns {Function}
+ */
+export function removeLocalTrack(track, conference) {
+    return async (dispatch, getState) => {
+        conference
+
+            // eslint-disable-next-line no-param-reassign
+            || (conference = getState()['features/base/conference'].conference);
+        
+        if (conference) {
+            await conference.removeTrack(track);
+        }
+
+        return dispatch(removeStoredTracks(track));
+    };
+}
+
+/**
+ * Replaces a stored track with another.
+ *
+ * @param {JitsiLocalTrack|null} track - The track to dispose.
+ * @returns {Function}
+ */
+function removeStoredTracks(track) {
+    return dispatch => {
+        // We call dispose after doing the replace because dispose will
+        // try and do a new o/a after the track removes itself. Doing it
+        // after means the JitsiLocalTrack.conference is already
+        // cleared, so it won't try and do the o/a.
+        const disposePromise
+              = track
+                  ? dispatch(_disposeAndRemoveTracks([ track ]))
+                  : Promise.resolve();
+
+        return disposePromise;
+    };
+}
+
+/**
  * Replaces a stored track with another.
  *
  * @param {JitsiLocalTrack|null} oldTrack - The track to dispose.
@@ -289,6 +371,86 @@ export function replaceLocalTrack(oldTrack, newTrack, conference) {
  * @returns {Function}
  */
 function replaceStoredTracks(oldTrack, newTrack) {
+
+    return dispatch => {
+        // We call dispose after doing the replace because dispose will
+        // try and do a new o/a after the track removes itself. Doing it
+        // after means the JitsiLocalTrack.conference is already
+        // cleared, so it won't try and do the o/a.
+        const disposePromise
+              = oldTrack
+                  ? dispatch(_disposeAndRemoveTracks([ oldTrack ]))
+                  : Promise.resolve();
+
+        return disposePromise
+            .then(() => {
+                if (newTrack) {
+                    // The mute state of the new track should be
+                    // reflected in the app's mute state. For example,
+                    // if the app is currently muted and changing to a
+                    // new track that is not muted, the app's mute
+                    // state should be falsey. As such, emit a mute
+                    // event here to set up the app to reflect the
+                    // track's mute state. If this is not done, the
+                    // current mute state of the app will be reflected
+                    // on the track, not vice-versa.
+                    const setMuted
+                          = newTrack.isVideoTrack()
+                              ? setVideoMuted
+                              : setAudioMuted;
+                    const isMuted = newTrack.isMuted();
+
+                    sendAnalytics(createTrackMutedEvent(
+                        newTrack.getType(),
+                        'track.replaced',
+                        isMuted));
+                    logger.log(`Replace ${newTrack.getType()} track - ${
+                        isMuted ? 'muted' : 'unmuted'}`);
+
+                    return dispatch(setMuted(isMuted));
+                }
+            })
+            .then(() => {
+                if (newTrack) {
+                    return dispatch(_addTracks([ newTrack ]));
+                }
+            });
+    };
+}
+
+/**
+ * We add screenshare track into the conference
+ *
+ * @param {JitsiLocalTrack|null} newTrack - The track to be added.
+ * @param {JitsiConference} [conference] - The conference from which to remove
+ * and add the tracks. If one is not provided, the conference in the redux store
+ * will be used.
+ * @returns {Function}
+ */
+export function addLocalTrack(newTrack, conference) {
+
+    return async (dispatch, getState) => {
+        conference
+
+            // eslint-disable-next-line no-param-reassign
+            || (conference = getState()['features/base/conference'].conference);
+        
+        // we use addTrack rather than replaceTrack
+        if (conference) {
+            await conference.addTrack(newTrack);
+        }
+
+        return dispatch(_addTracks([ newTrack ]));
+    };
+}
+
+/**
+ * Replaces a stored track with another.
+ *
+ * @param {JitsiLocalTrack|null} newTrack - The track to use instead.
+ * @returns {Function}
+ */
+function addStoredTracks(oldTrack, newTrack) {
     return dispatch => {
         // We call dispose after doing the replace because dispose will
         // try and do a new o/a after the track removes itself. Doing it

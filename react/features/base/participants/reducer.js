@@ -49,6 +49,7 @@ const PARTICIPANT_PROPS_TO_OMIT_WHEN_UPDATE = [
     // actions:
     'dominantSpeaker',
     'pinned'
+    // 'pinnedVideoType'
 ];
 
 /**
@@ -160,8 +161,9 @@ function _participant(state: Object = {}, action) {
     }
 
     case PIN_PARTICIPANT:
+        let newState = set(state, 'pinnedVideoType', action.participant.videoType);
         // Currently, only one pinned participant is allowed.
-        return set(state, 'pinned', state.id === action.participant.id);
+        return set(newState, 'pinned', newState.id === action.participant.id);
     }
 
     return state;

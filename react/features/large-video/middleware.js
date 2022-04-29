@@ -48,11 +48,18 @@ MiddlewareRegistry.register(store => next => action => {
         break;
     }
     case PARTICIPANT_JOINED:
+        store.dispatch(selectParticipantInLargeVideo(action.participant.id)); // no video type information received!
+        break;
     case PARTICIPANT_LEFT:
-    case PIN_PARTICIPANT:
-    case TRACK_ADDED:
     case TRACK_REMOVED:
-        store.dispatch(selectParticipantInLargeVideo());
+        store.dispatch(selectParticipantInLargeVideo()); // no video type information received!
+        break;
+    case PIN_PARTICIPANT:
+        store.dispatch(selectParticipantInLargeVideo(action.participant.id, action.participant.videoType)); // no video type information received!
+        break;
+    case TRACK_ADDED:
+        if (action.track.mediaType !== 'audio')
+            store.dispatch(selectParticipantInLargeVideo(action.track.participantId, action.track.videoType, true)); // no video type information received!
         break;
 
     case CONFERENCE_JOINED:

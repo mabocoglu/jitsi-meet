@@ -1,7 +1,9 @@
 // @flow
 
 import { getPinnedParticipant, getParticipantCount } from '../base/participants';
+import { getTrackByMediaTypeAndParticipant, getTracksByMediaTypeAndVideoType } from '../base/tracks';
 import { isYoutubeVideoPlaying } from '../youtube-player/functions';
+import { MEDIA_TYPE, VIDEO_TYPE} from '../base/media';
 
 import { LAYOUTS } from './constants';
 
@@ -51,7 +53,10 @@ export function getTileViewGridDimensions(state: Object, maxColumns: number = ge
     // When in tile view mode, we must discount ourselves (the local participant) because our
     // tile is not visible.
     const { iAmRecorder } = state['features/base/config'];
-    const numberOfParticipants = state['features/base/participants'].length - (iAmRecorder ? 1 : 0);
+
+    // We should increase number of participant if there are screenshare tracks
+    const numberOfDesktopVideos = getTracksByMediaTypeAndVideoType(state['features/base/tracks'], MEDIA_TYPE.VIDEO, VIDEO_TYPE.DESKTOP).length;
+    const numberOfParticipants = state['features/base/participants'].length + numberOfDesktopVideos - (iAmRecorder ? 1 : 0);
 
     const columnsToMaintainASquare = Math.ceil(Math.sqrt(numberOfParticipants));
     const columns = Math.min(columnsToMaintainASquare, maxColumns);

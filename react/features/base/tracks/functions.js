@@ -1,7 +1,7 @@
 /* global APP */
 
 import JitsiMeetJS, { JitsiTrackErrors, browser } from '../lib-jitsi-meet';
-import { MEDIA_TYPE, setAudioMuted } from '../media';
+import { MEDIA_TYPE, VIDEO_TYPE, setAudioMuted } from '../media';
 import {
     getUserSelectedCameraDeviceId,
     getUserSelectedMicDeviceId
@@ -237,6 +237,25 @@ export function getLocalTrack(tracks, mediaType, includePending = false) {
 }
 
 /**
+ * Returns local track by media type.
+ *
+ * @param {Track[]} tracks - List of all tracks.
+ * @param {MEDIA_TYPE} mediaType - Media type.
+ * @param {VIDEO_TYPE} videoType - Video type.
+ * @param {boolean} [includePending] - Indicates whether a local track is to be
+ * returned if it is still pending. A local track is pending if
+ * {@code getUserMedia} is still executing to create it and, consequently, its
+ * {@code jitsiTrack} property is {@code undefined}. By default a pending local
+ * track is not returned.
+ * @returns {(Track|undefined)}
+ */
+export function getLocalTrack2(tracks, mediaType, videoType, includePending = false) {
+    return (
+        getLocalTracks(tracks, includePending)
+            .find(t => t.mediaType === mediaType && (!videoType || t.videoType === videoType)));
+}
+
+/**
  * Returns an array containing the local tracks with or without a (valid)
  * {@code JitsiTrack}.
  *
@@ -260,6 +279,33 @@ export function getLocalTracks(tracks, includePending = false) {
 }
 
 /**
+ * Returns an array containing the local tracks with or without a (valid)
+ * {@code JitsiTrack}.
+ *
+ * @param {Track[]} tracks - An array containing all local tracks.
+ * @param {MEDIA_TYPE} mediaType - Media type of the track // mabocoglu
+ * @param {boolean} [includePending] - Indicates whether a local track is to be
+ * returned if it is still pending. A local track is pending if
+ * {@code getUserMedia} is still executing to create it and, consequently, its
+ * {@code jitsiTrack} property is {@code undefined}. By default a pending local
+ * track is not returned.
+ * @returns {Track[]}
+ */
+ export function getLocalTracks2(tracks, mediaType, includePending = false) {
+    // XXX A local track is considered ready only once it has its `jitsiTrack`
+    // property set by the `TRACK_ADDED` action. Until then there is a stub
+    // added just before the `getUserMedia` call with a cancellable
+    // `gumInProgress` property which then can be used to destroy the track that
+    // has not yet been added to the redux store. Once GUM is cancelled, it will
+    // never make it to the store nor there will be any
+    // `TRACK_ADDED`/`TRACK_REMOVED` actions dispatched for it.
+    // debugger;
+    // // console.log("***### Tracks: ", tracks);
+
+    return tracks.filter(t => t.local && t.mediaType === mediaType && (t.jitsiTrack || includePending));
+}
+
+/**
  * Returns local video track.
  *
  * @param {Track[]} tracks - List of all tracks.
@@ -267,6 +313,33 @@ export function getLocalTracks(tracks, includePending = false) {
  */
 export function getLocalVideoTrack(tracks) {
     return getLocalTrack(tracks, MEDIA_TYPE.VIDEO);
+}
+
+/**
+ * Check if there is any screenshare track
+ *
+ * @param {Track[]} tracks - List of all tracks.
+ * @returns {(Boolean)}
+ */
+ export function hasLocalVideoDesktopTrack(tracks) {
+    const videoTracks = getLocalTracks2(tracks, MEDIA_TYPE.VIDEO);
+
+    for (const videoTrack of videoTracks) {
+        if (videoTrack.videoType === VIDEO_TYPE.DESKTOP)
+            return true;
+    }
+
+    return false;
+}
+
+/**
+ * Returns local video tracks.
+ *
+ * @param {Track[]} tracks - List of all tracks.
+ * @returns {(Track[]|undefined)}
+ */
+export function getLocalVideoTracks(tracks) {
+    return getLocalTracks2(tracks, MEDIA_TYPE.VIDEO);
 }
 
 /**
@@ -285,12 +358,17 @@ export function getLocalVideoType(tracks) {
  * Returns the stored local video track.
  *
  * @param {Object} state - The redux state.
+ * @param {string} videoType - video type
  * @returns {Object}
  */
-export function getLocalJitsiVideoTrack(state) {
-    const track = getLocalVideoTrack(state['features/base/tracks']);
+export function getLocalJitsiVideoTrack(state, videoType) {
+    const tracks = getLocalVideoTracks(state['features/base/tracks']);
 
-    return track?.jitsiTrack;
+    for(let track of tracks) {
+        if (track.videoType === videoType) {
+            return track?.jitsiTrack;
+        }
+    }
 }
 
 /**
@@ -311,15 +389,20 @@ export function getLocalJitsiAudioTrack(state) {
  * @param {Track[]} tracks - List of all tracks.
  * @param {MEDIA_TYPE} mediaType - Media type.
  * @param {string} participantId - Participant ID.
+ * @param {VIDEO_TYPE} videoType - Video type.
  * @returns {(Track|undefined)}
  */
 export function getTrackByMediaTypeAndParticipant(
         tracks,
         mediaType,
-        participantId) {
-    return tracks.find(
-        t => t.participantId === participantId && t.mediaType === mediaType
-    );
+        participantId,
+        videoType = null) {
+
+            let track = tracks.find(
+                t => t.participantId === participantId && t.mediaType === mediaType && ((videoType && t.videoType === videoType) || !videoType)
+            );
+            
+    return track;
 }
 
 /**
@@ -346,14 +429,28 @@ export function getTracksByMediaType(tracks, mediaType) {
 }
 
 /**
+ * Returns tracks of specified media type.
+ *
+ * @param {Track[]} tracks - List of all tracks.
+ * @param {MEDIA_TYPE} mediaType - Media type.
+ * @param {VIDEO_TYPE} videoType - Media type.
+ * @returns {Track[]}
+ */
+ export function getTracksByMediaTypeAndVideoType(tracks, mediaType, videoType) {
+    return tracks.filter(t => t.mediaType === mediaType && ((videoType && t.videoType === videoType) || !videoType));
+}
+
+// TODO: Elden geçmesi lazım.
+/**
  * Checks if the local video track in the given set of tracks is muted.
  *
  * @param {Track[]} tracks - List of all tracks.
- * @returns {Track[]}
+ * @returns {Boolean}
  */
 export function isLocalVideoTrackMuted(tracks) {
     const presenterTrack = getLocalTrack(tracks, MEDIA_TYPE.PRESENTER);
-    const videoTrack = getLocalTrack(tracks, MEDIA_TYPE.VIDEO);
+
+    const videoTrack = getLocalTrack2(tracks, MEDIA_TYPE.VIDEO, VIDEO_TYPE.CAMERA); // mute only for camera track
 
     // Make sure we check the mute status of only camera tracks, i.e.,
     // presenter track when it exists, camera track when the presenter
@@ -361,8 +458,7 @@ export function isLocalVideoTrackMuted(tracks) {
     if (presenterTrack) {
         return isLocalTrackMuted(tracks, MEDIA_TYPE.PRESENTER);
     } else if (videoTrack) {
-        return videoTrack.videoType === 'camera'
-            ? isLocalTrackMuted(tracks, MEDIA_TYPE.VIDEO) : true;
+        return videoTrack.videoType === 'camera' ? isLocalTrackMuted(tracks, MEDIA_TYPE.VIDEO, VIDEO_TYPE.CAMERA) : false;
     }
 
     return true;
@@ -377,8 +473,8 @@ export function isLocalVideoTrackMuted(tracks) {
  * unmuted or if there are no local tracks of the given media type in the given
  * set of tracks.
  */
-export function isLocalTrackMuted(tracks, mediaType) {
-    const track = getLocalTrack(tracks, mediaType);
+export function isLocalTrackMuted(tracks, mediaType, videoType = null) {
+    const track = getLocalTrack2(tracks, mediaType, videoType);
 
     return !track || track.muted;
 }

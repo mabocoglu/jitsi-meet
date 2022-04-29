@@ -1,11 +1,13 @@
 // @flow
 
+import { PARTICIPANT_CONN_STATUS_CHANGED } from 'lib-jitsi-meet/JitsiConferenceEvents';
 import VideoLayout from '../../../modules/UI/videolayout/VideoLayout.js';
 import { CONFERENCE_JOINED, CONFERENCE_WILL_LEAVE } from '../base/conference';
 import {
     DOMINANT_SPEAKER_CHANGED,
     PARTICIPANT_JOINED,
     PARTICIPANT_LEFT,
+    PARTICIPANT_STOPPED_SCREEN_SHARE,
     PARTICIPANT_UPDATED,
     PIN_PARTICIPANT,
     getParticipantById
@@ -51,6 +53,10 @@ MiddlewareRegistry.register(store => next => action => {
     case PARTICIPANT_LEFT:
         VideoLayout.removeParticipantContainer(action.participant.id);
         break;
+    
+    case PARTICIPANT_STOPPED_SCREEN_SHARE: // If screen share stopped
+        VideoLayout.removeParticipantDesktopContainer(action.participant.id);
+        break;
 
     case PARTICIPANT_UPDATED: {
         // Look for actions that triggered a change to connectionStatus. This is
@@ -69,7 +75,7 @@ MiddlewareRegistry.register(store => next => action => {
         break;
 
     case PIN_PARTICIPANT:
-        VideoLayout.onPinChange(action.participant?.id);
+        VideoLayout.onPinChange(action.participant?.id, action.participant?.videoType);
         break;
 
     case SET_FILMSTRIP_VISIBLE:

@@ -7,6 +7,7 @@ import { getAvailableDevices } from '../devices/actions';
 import {
     CAMERA_FACING_MODE,
     MEDIA_TYPE,
+    VIDEO_TYPE,
     SET_AUDIO_MUTED,
     SET_CAMERA_FACING_MODE,
     SET_VIDEO_MUTED,
@@ -30,6 +31,7 @@ import {
 } from './actions';
 import {
     getLocalTrack,
+    getLocalTrack2,
     getTrackByJitsiTrack,
     isUserInteractionRequiredForUnmute,
     setTrackMuted
@@ -156,12 +158,13 @@ MiddlewareRegistry.register(store => next => action => {
                 // Do not change the video mute state for local presenter tracks.
                 if (jitsiTrack.type === MEDIA_TYPE.PRESENTER) {
                     APP.conference.mutePresenter(muted);
-                } else if (jitsiTrack.isLocal()) {
+                } else if (jitsiTrack.isLocal() && jitsiTrack.videoType === VIDEO_TYPE.CAMERA) {
                     APP.conference.setVideoMuteStatus(muted);
-                } else {
+                } else if (jitsiTrack.videoType === VIDEO_TYPE.CAMERA) {
                     APP.UI.setVideoMuted(participantID, muted);
                 }
-                APP.UI.onPeerVideoTypeChanged(participantID, jitsiTrack.videoType);
+                // we do not use video type changed event anymore.
+                // APP.UI.onPeerVideoTypeChanged(participantID, jitsiTrack.videoType);
             } else if (jitsiTrack.isLocal()) {
                 APP.conference.setAudioMuteStatus(muted);
             } else {
@@ -243,11 +246,15 @@ function _handleNoDataFromSourceErrors(store, action) {
 function _getLocalTrack(
         { getState }: { getState: Function },
         mediaType: MEDIA_TYPE,
+        videoType: VIDEO_TYPE,
         includePending: boolean = false) {
+    const tracks = getState()['features/base/tracks'];
+
     return (
-        getLocalTrack(
+        getLocalTrack2(
             getState()['features/base/tracks'],
             mediaType,
+            videoType,
             includePending));
 }
 
@@ -280,8 +287,7 @@ function _removeNoDataFromSourceNotification({ getState, dispatch }, track) {
  * @returns {void}
  */
 function _setMuted(store, { ensureTrack, authority, muted }, mediaType: MEDIA_TYPE) {
-    const localTrack
-        = _getLocalTrack(store, mediaType, /* includePending */ true);
+    const localTrack = _getLocalTrack(store, mediaType, mediaType === MEDIA_TYPE.VIDEO ? VIDEO_TYPE.CAMERA : null,  /* includePending */ true);
 
     if (localTrack) {
         // The `jitsiTrack` property will have a value only for a localTrack for

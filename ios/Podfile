@@ -77,7 +77,13 @@ target 'JitsiMeet' do
   use_native_modules!
 end
 
+## Fix for XCode 12.5
+## Via https://github.com/facebook/react-native/issues/31412#issuecomment-855594504
 post_install do |installer|
+  find_and_replace("../node_modules/react-native/React/CxxBridge/RCTCxxBridge.mm",
+    "_initializeModules:(NSArray<id<RCTBridgeModule>> *)modules", "_initializeModules:(NSArray<Class> *)modules")
+    find_and_replace("../node_modules/react-native/ReactCommon/turbomodule/core/platform/ios/RCTTurboModuleManager.mm",
+    "RCTBridgeModuleNameForClass(module))", "RCTBridgeModuleNameForClass(Class(module)))")
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['ENABLE_BITCODE'] = 'YES'
@@ -85,4 +91,17 @@ post_install do |installer|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'
     end
   end
+end
+
+def find_and_replace(dir, findstr, replacestr)
+Dir[dir].each do |name|
+   text = File.read(name)
+   replace = text.gsub(findstr,replacestr)
+   if text != replace
+       puts "Fix: " + name
+       File.open(name, "w") { |file| file.puts replace }
+       STDOUT.flush
+   end
+end
+Dir[dir + '*/'].each(&method(:find_and_replace))
 end

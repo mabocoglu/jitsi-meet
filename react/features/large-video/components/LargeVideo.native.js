@@ -27,6 +27,13 @@ type Props = {
     _participantId: string,
 
     /**
+     * The video type of the participant (to be) depicted by LargeVideo.
+     *
+     * @private
+     */
+     _videoType: string,
+
+    /**
      * The color-schemed stylesheet of the feature.
      */
     _styles: StyleType,
@@ -113,6 +120,7 @@ class LargeVideo extends PureComponent<Props, State> {
         } = this.state;
         const {
             _participantId,
+            _videoType,
             _styles,
             onClick
         } = this.props;
@@ -122,6 +130,7 @@ class LargeVideo extends PureComponent<Props, State> {
                 avatarSize = { avatarSize }
                 onPress = { onClick }
                 participantId = { _participantId }
+                videoType = { _videoType }
                 style = { _styles.largeVideo }
                 testHintId = 'org.jitsi.meet.LargeVideo'
                 useConnectivityInfoLabel = { useConnectivityInfoLabel }
@@ -144,6 +153,7 @@ function _mapStateToProps(state) {
     return {
         _height: height,
         _participantId: state['features/large-video'].participantId,
+        _videoType: state['features/large-video'].videoType, // while sending to reducer, bu also set video type
         _styles: ColorSchemeRegistry.get(state, 'LargeVideo'),
         _width: width
     };

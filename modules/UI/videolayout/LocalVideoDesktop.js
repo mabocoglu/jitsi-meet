@@ -30,7 +30,7 @@ export default class LocalVideo extends SmallVideo {
      */
     constructor(VideoLayout, emitter, streamEndedCallback) {
         super(VideoLayout);
-        this.videoSpanId = 'localVideoContainer';
+        this.videoSpanId = 'localVideoDesktopContainer';
         this.streamEndedCallback = streamEndedCallback;
         this.container = this.createContainer();
         this.$container = $(this.container);
@@ -78,7 +78,7 @@ export default class LocalVideo extends SmallVideo {
 
         containerSpan.innerHTML = `
             <div class = 'videocontainer__background'></div>
-            <span id = 'localVideoWrapper'></span>
+            <span id = 'localVideoDesktopWrapper'></span>
             <div class = 'videocontainer__toolbar'></div>
             <div class = 'videocontainer__toptoolbar'></div>
             <div class = 'videocontainer__hoverOverlay'></div>
@@ -104,8 +104,8 @@ export default class LocalVideo extends SmallVideo {
 
         this._renderDisplayName({
             allowEditing: APP.store.getState()['features/base/jwt'].isGuest,
-            displayNameSuffix: interfaceConfig.DEFAULT_LOCAL_DISPLAY_NAME,
-            elementID: 'localDisplayName',
+            displayNameSuffix: interfaceConfig.DEFAULT_LOCAL_DISPLAY_NAME, // mabocoglu: + ' Duruşma Zaptı' eklenirse yalnızca paylaşımı yapanın ekranında kalır.
+            elementID: 'localDesktopDisplayName',
             participantID: this.id
         });
     }
@@ -128,7 +128,7 @@ export default class LocalVideo extends SmallVideo {
 
         const endedHandler = () => {
             const localVideoContainer
-                = document.getElementById('localVideoWrapper');
+                = document.getElementById('localVideoDesktopWrapper');
 
             // Only remove if there is no video and not a transition state.
             // Previous non-react logic created a new video element with each track
@@ -202,7 +202,7 @@ export default class LocalVideo extends SmallVideo {
             zIndex: 10000,
             items: {
                 flip: {
-                    name: 'Flip',
+                    name: 'Videoyu Ters Çevir',
                     callback: () => {
                         const { store } = APP;
                         const val = !store.getState()['features/base/settings']
@@ -249,7 +249,7 @@ export default class LocalVideo extends SmallVideo {
         }
 
         const appendTarget = shouldDisplayTileView(APP.store.getState())
-            ? document.getElementById('localVideoTileViewContainer')
+            ? document.getElementById('localVideoDesktopTileViewContainer')
             : document.getElementById('filmstripLocalVideoThumbnail');
 
         appendTarget && appendTarget.appendChild(this.container);
@@ -261,22 +261,32 @@ export default class LocalVideo extends SmallVideo {
      *
      */
     _updateVideoElement() {
-        const localVideoContainer = document.getElementById('localVideoWrapper');
+        const localVideoContainer = document.getElementById('localVideoDesktopWrapper');
         const videoTracks = getLocalVideoTracks(APP.store.getState()['features/base/tracks']);
 
         for (var videoTrack of videoTracks) {
-            if (videoTrack.videoType === VIDEO_TYPE.CAMERA) {
-
+            if (videoTrack.videoType === VIDEO_TYPE.DESKTOP) {
+                // console.log("***### Desktop Track: ", videoTrack);
+                
                 ReactDOM.render(
                     <Provider store = { APP.store }>
                         <VideoTrack
-                            id = 'localVideo_container'
+                            id = 'localVideoDesktop_container'
                             videoTrack = { videoTrack } />
                     </Provider>,
                     localVideoContainer
                 );
             }
         }
+
+        ReactDOM.render(
+            <Provider store = { APP.store }>
+                <VideoTrack
+                    id = 'localVideoDesktop_container'
+                    videoTrack = { videoTrack } />
+            </Provider>,
+            localVideoContainer
+        );
 
         // Ensure the video gets play() called on it. This may be necessary in the
         // case where the local video container was moved and re-attached, in which

@@ -12,6 +12,7 @@ import { i18next } from '../../../react/features/base/i18n';
 import {
     JitsiParticipantConnectionStatus
 } from '../../../react/features/base/lib-jitsi-meet';
+import { VIDEO_TYPE } from '../../../react/features/base/media';
 import {
     getPinnedParticipant,
     pinParticipant
@@ -68,14 +69,15 @@ export default class RemoteVideo extends SmallVideo {
      * @param user {JitsiParticipant} the user for whom remote video instance will
      * be created.
      * @param {VideoLayout} VideoLayout the video layout instance.
+     * @param {VIDEO_TYPE|undefined} videoType type of the video instance.
      * @constructor
      */
-    constructor(user, VideoLayout) {
+    constructor(user, VideoLayout, videoType = VIDEO_TYPE.CAMERA) {
         super(VideoLayout);
 
         this.user = user;
         this.id = user.getId();
-        this.videoSpanId = `participant_${this.id}`;
+        this.videoSpanId = videoType ? `participant_${this.id}_${videoType}` : `participant_${this.id}`; // we define id value according to the video type
 
         this._audioStreamElement = null;
         this._supportsRemoteControl = false;
@@ -458,7 +460,7 @@ export default class RemoteVideo extends SmallVideo {
 
         const listener = () => {
             this._canPlayEventReceived = true;
-            this.VideoLayout.remoteVideoActive(streamElement, this.id);
+            this.VideoLayout.remoteVideoActive(streamElement, stream.videoType, this.id);
             streamElement.removeEventListener('canplay', listener);
 
             // Refresh to show the video
@@ -480,7 +482,7 @@ export default class RemoteVideo extends SmallVideo {
         }
 
         const isVideo = stream.isVideoTrack();
-
+        
         if (isVideo) {
             this.videoStream = stream;
         } else {

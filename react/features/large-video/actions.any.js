@@ -52,20 +52,28 @@ export function selectParticipant() {
  * participant will be selected based on a variety of factors: If there is a
  * dominant or pinned speaker, or if there are remote tracks, etc.
  *
- * @param {string} participant - The participant id of the user that needs to be
+ * @param {string} participantId - The participant id of the user that needs to be
+ * displayed on the large video.
+ * @param {string} videoType - The video type of the user that needs to be
  * displayed on the large video.
  * @returns {Function}
  */
-export function selectParticipantInLargeVideo(participant: ?string) {
+export function selectParticipantInLargeVideo(participantId: ?string, videoType: ?string, force: Boolean = false) {
     return (dispatch: Dispatch<any>, getState: Function) => {
         const state = getState();
-        const participantId = participant ?? _electParticipantInLargeVideo(state);
+        const _participantId = participantId ?? _electParticipantInLargeVideo(state);
+        const participants = state['features/base/participants'];
+        const participant = participants.find(p => p.id === _participantId);
         const largeVideo = state['features/large-video'];
+        const _videoType = videoType || (participant ? participant.pinnedVideoType : undefined); // we get video type information from pinned participant
 
-        if (participantId !== largeVideo.participantId) {
+        // different participant or different video type from the same participant
+        if (_participantId !== largeVideo.participantId || largeVideo.videoType !== _videoType || force) {
+            
             dispatch({
                 type: SELECT_LARGE_VIDEO_PARTICIPANT,
-                participantId
+                participantId: _participantId,
+                videoType: videoType
             });
 
             dispatch(selectParticipant());

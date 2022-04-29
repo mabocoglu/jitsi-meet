@@ -11,6 +11,7 @@ import { Provider } from 'react-redux';
 import { AudioLevelIndicator } from '../../../react/features/audio-level-indicator';
 import { Avatar as AvatarDisplay } from '../../../react/features/base/avatar';
 import { i18next } from '../../../react/features/base/i18n';
+import { VIDEO_TYPE } from '../../../react/features/base/media';
 import {
     getParticipantCount,
     getPinnedParticipant,
@@ -88,7 +89,6 @@ export default class SmallVideo {
         this.audioStream = null;
         this.VideoLayout = VideoLayout;
         this.videoIsHovered = false;
-        this.videoType = undefined;
 
         /**
          * The current state of the user's bridge connection. The value should be
@@ -263,6 +263,16 @@ export default class SmallVideo {
         this.isVideoMuted = isMuted;
         this.updateView();
         this.updateStatusBar();
+    }
+
+    /**
+     * videoType
+     *
+     * @param {VIDEO_TYPE} videoType videoType
+     * or not
+     */
+    setVideoType(videoType) {
+        this.videoType = videoType;
     }
 
     /**
@@ -448,7 +458,7 @@ export default class SmallVideo {
      * or <tt>false</tt> otherwise.
      */
     isCurrentlyOnLargeVideo() {
-        return APP.store.getState()['features/large-video']?.participantId === this.id;
+        return APP.store.getState()['features/large-video']?.participantId === this.id && APP.store.getState()['features/large-video']?.videoType === this.videoType;
     }
 
     /**
@@ -469,18 +479,16 @@ export default class SmallVideo {
      * or <tt>DISPLAY_BLACKNESS_WITH_NAME</tt>.
      */
     selectDisplayMode(input) {
-        if (!input.tileViewActive && input.isScreenSharing) {
-            return input.isHovered ? DISPLAY_AVATAR_WITH_NAME : DISPLAY_AVATAR;
-        } else if (input.isCurrentlyOnLargeVideo && !input.tileViewActive) {
+        if (input.isCurrentlyOnLargeVideo && !input.tileViewActive) {
             // Display name is always and only displayed when user is on the stage
-            return input.isVideoPlayable && !input.isAudioOnly ? DISPLAY_BLACKNESS_WITH_NAME : DISPLAY_AVATAR_WITH_NAME;
+            return input.isVideoPlayable && !input.isAudioOnly ? DISPLAY_VIDEO : DISPLAY_AVATAR_WITH_NAME; //DISPLAY_BLACKNESS_WITH_NAME : DISPLAY_AVATAR_WITH_NAME;
         } else if (input.isVideoPlayable && input.hasVideo && !input.isAudioOnly) {
             // check hovering and change state to video with name
-            return input.isHovered ? DISPLAY_VIDEO_WITH_NAME : DISPLAY_VIDEO;
+            return DISPLAY_VIDEO;
         }
 
-        // check hovering and change state to avatar with name
-        return input.isHovered ? DISPLAY_AVATAR_WITH_NAME : DISPLAY_AVATAR;
+        // Show alyways the display name
+        return DISPLAY_AVATAR_WITH_NAME;
     }
 
     /**
@@ -550,8 +558,8 @@ export default class SmallVideo {
             break;
         case DISPLAY_AVATAR:
         default:
-            displayModeString = 'avatar';
-            this.$container.addClass('display-avatar-only');
+            displayModeString = 'avatar-with-name';
+            this.$container.addClass('display-avatar-with-name');
             break;
         }
 
@@ -815,10 +823,12 @@ export default class SmallVideo {
      * @returns {void}
      */
     togglePin() {
+        const videoType = this.videoStream ? this.videoStream.videoType : undefined;
         const pinnedParticipant = getPinnedParticipant(APP.store.getState()) || {};
-        const participantIdToPin = pinnedParticipant && pinnedParticipant.id === this.id ? null : this.id;
 
-        APP.store.dispatch(pinParticipant(participantIdToPin));
+        const participantIdToPin = pinnedParticipant && pinnedParticipant.id === this.id && pinnedParticipant.pinnedVideoType === videoType ? null : this.id;
+
+        APP.store.dispatch(pinParticipant(participantIdToPin, videoType));
     }
 
     /**

@@ -160,7 +160,7 @@ class VideoSettingsButton extends Component<Props, State> {
  */
 function mapStateToProps(state) {
     return {
-        hasVideoTrack: Boolean(getLocalJitsiVideoTrack(state)),
+        hasVideoTrack: Boolean(getLocalJitsiVideoTrack(state, 'camera')),
         isDisabled: isVideoSettingsButtonDisabled(state),
         permissionPromptVisibility: getMediaPermissionPromptVisibility(state),
         visible: !isMobileBrowser()

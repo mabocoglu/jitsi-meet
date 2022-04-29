@@ -190,7 +190,8 @@
     }
 }
 
-#localVideoWrapper {
+#localVideoWrapper,
+#localVideoDesktopWrapper {
     display:inline-block;
 }
 
@@ -202,7 +203,9 @@
 }
 
 #localVideoWrapper video,
-#localVideoWrapper object {
+#localVideoWrapper object,
+#localVideoDesktopWrapper video,
+#localVideoDesktopWrapper object {
     border-radius: $borderRadius !important;
     cursor: hand;
     object-fit: cover;
@@ -235,6 +238,9 @@
 #localVideoWrapper video,
 #localVideoWrapper object,
 #localVideoWrapper,
+#localVideoDesktopWrapper video,
+#localVideoDesktopWrapper object,
+#localVideoDesktopWrapper,
 #largeVideoWrapper,
 #largeVideoWrapper>video,
 #largeVideoWrapper>object,
@@ -266,17 +272,19 @@
     position: absolute;
     left: 10%;
     width: 80%;
-    top: 50%;
+    bottom: 1%;
     @include transform(translateY(-40%));
     color: $participantNameColor;
     text-align: center;
     text-overflow: ellipsis;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 100;
     overflow: hidden;
     white-space: nowrap;
     line-height: $thumbnailToolbarHeight;
     z-index: $zindex2;
+
+    background:rgba(120, 130, 165, 0.3);
 }
 
 #alwaysOnTop .displayname {
@@ -303,6 +311,10 @@
     cursor: text;
 }
 
+#localVideoDesktopContainer .displayname:hover {
+    cursor: text;
+}
+
 .videocontainer .displayname {
     pointer-events: none;
     padding: 0 3px 0 3px;
@@ -313,6 +325,10 @@
 }
 
 #localDisplayName {
+    pointer-events: auto !important;
+}
+
+#localDesktopDisplayName {
     pointer-events: auto !important;
 }
 
@@ -647,7 +663,7 @@
     }
 
     .displayNameContainer {
-        visibility: hidden;
+        visibility: visible;
     }
 
     .videocontainer__hoverOverlay {
@@ -683,7 +699,7 @@
     }
 
     .displayNameContainer {
-        visibility: hidden;
+        visibility: visible;
     }
 
     .videocontainer__hoverOverlay {

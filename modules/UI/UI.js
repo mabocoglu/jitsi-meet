@@ -122,6 +122,10 @@ UI.initConference = function() {
     if (displayName) {
         UI.changeDisplayName('localVideoContainer', displayName);
     }
+
+    if (displayName) {
+        UI.changeDisplayName('localVideoDesktopContainer', displayName + " Screen");
+    }
 };
 
 /**
@@ -212,11 +216,22 @@ UI.unbindEvents = () => {
 };
 
 /**
+ * Removing desktop track from UI
+ */
+UI.removeLocalVideoDesktop = () => {
+    VideoLayout.removeLocalVideoDesktop();
+};
+
+/**
  * Show local video stream on UI.
  * @param {JitsiTrack} track stream to show
  */
 UI.addLocalVideoStream = track => {
-    VideoLayout.changeLocalVideo(track);
+    if (track.videoType === 'desktop') {
+        VideoLayout.addLocalVideoDesktop(track);
+    } else {
+        VideoLayout.changeLocalVideo(track);
+    }
 };
 
 /**
@@ -433,8 +448,8 @@ UI.dockToolbar = dock => APP.store.dispatch(dockToolbox(dock));
  * @param {string} avatarURL - The URL to avatar image to display.
  * @returns {void}
  */
-UI.refreshAvatarDisplay = function(id) {
-    VideoLayout.changeUserAvatar(id);
+UI.refreshAvatarDisplay = function(id, videoType) {
+    VideoLayout.changeUserAvatar(id, videoType);
 };
 
 /**
@@ -592,6 +607,17 @@ UI.onSharedVideoUpdate = function(id, url, attributes) {
 UI.onSharedVideoStop = function(id, attributes) {
     if (sharedVideoManager) {
         sharedVideoManager.onSharedVideoStop(id, attributes);
+    }
+};
+
+/**
+ * Stop showing shared desktop video.
+ * @param {string} id the id of the sender of the command
+ * @param {string} attributes
+ */
+UI.onSharedVideoDesktopStop = function(id, attributes) {
+    if (sharedVideoManager) {
+        sharedVideoManager.onSharedVideoDesktopStop(id, attributes);
     }
 };
 

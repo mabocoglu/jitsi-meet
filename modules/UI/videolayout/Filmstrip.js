@@ -49,6 +49,16 @@ const Filmstrip = {
             });
         }
 
+        if (thumbs.localDesktopThumb) {
+            thumbs.localDesktopThumb.css({
+                'padding-top': '',
+                height: `${height}px`,
+                'min-height': `${height}px`,
+                'min-width': `${width}px`,
+                width: `${width}px`
+            });
+        }
+
         if (thumbs.remoteThumbs) {
             thumbs.remoteThumbs.css({
                 'padding-top': '',
@@ -86,6 +96,22 @@ const Filmstrip = {
                 width: `${width}px`
             });
             $('#localVideoContainer > .avatar-container').css({
+                height: `${avatarSize}px`,
+                width: `${avatarSize}px`
+            });
+        }
+
+        if (thumbs.localDesktopThumb) {
+            const { height, width } = local;
+            const avatarSize = height / 2;
+
+            thumbs.localDesktopThumb.css({
+                height: `${height}px`,
+                'min-height': `${height}px`,
+                'min-width': `${width}px`,
+                width: `${width}px`
+            });
+            $('#localVideoDesktopContainer > .avatar-container').css({
                 height: `${avatarSize}px`,
                 width: `${avatarSize}px`
             });
@@ -132,6 +158,22 @@ const Filmstrip = {
             });
         }
 
+        if (thumbs.localDesktopThumb) {
+            const heightToWidthPercent = 100 / interfaceConfig.LOCAL_THUMBNAIL_RATIO;
+
+            thumbs.localDesktopThumb.css({
+                'padding-top': `${heightToWidthPercent}%`,
+                width: '',
+                height: '',
+                'min-width': '',
+                'min-height': ''
+            });
+            $('#localVideoDesktopContainer > .avatar-container').css({
+                height: '50%',
+                width: `${heightToWidthPercent / 2}%`
+            });
+        }
+
         if (thumbs.remoteThumbs) {
             const heightToWidthPercent = 100 / interfaceConfig.REMOTE_THUMBNAIL_RATIO;
 
@@ -162,16 +204,20 @@ const Filmstrip = {
         }
 
         const localThumb = $('#localVideoContainer');
+        const localDesktopThumb = $('#localVideoDesktopContainer');
         const remoteThumbs = $('#filmstripRemoteVideosContainer').children(selector);
 
         // Exclude the local video container if it has been hidden.
-        if (localThumb.hasClass('hidden')) {
+        if (localThumb.hasClass('hidden') && localDesktopThumb.hasClass('hidden')) {
             return { remoteThumbs };
+        } else if (localThumb.hasClass('hidden')) {
+            return { remoteThumbs, localDesktopThumb };
+        } else if (localDesktopThumb.hasClass('hidden')) {
+            return { remoteThumbs, localThumb };
+        } else {
+            return { remoteThumbs,
+                localThumb, localDesktopThumb };
         }
-
-        return { remoteThumbs,
-            localThumb };
-
     }
 };
 

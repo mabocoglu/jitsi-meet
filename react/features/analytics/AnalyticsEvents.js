@@ -419,6 +419,28 @@ export function createRecordingDialogEvent(
 
 /**
  * Creates an event which indicates that a specific button on one of the
+ * screen-sharing-related dialogs was clicked.
+ *
+ * @param {string} dialogName - The name of the dialog (e.g. 'start' or 'stop').
+ * @param {string} buttonName - The name of the button (e.g. 'confirm' or
+ * 'cancel').
+ * @param {Object} attributes - Attributes to attach to the event.
+ * @returns {Object} The event in a format suitable for sending via
+ * sendAnalytics.
+ */
+export function createScreenSharingDialogEvent(
+    dialogName, buttonName, attributes = {}) {
+return {
+    action: 'clicked',
+    actionSubject: buttonName,
+    attributes,
+    source: `${dialogName}.screen.sharing.dialog`,
+    type: TYPE_UI
+};
+}
+
+/**
+ * Creates an event which indicates that a specific button on one of the
  * liveStreaming-related dialogs was clicked.
  *
  * @param {string} dialogName - The name of the dialog (e.g. 'start' or 'stop').

@@ -81,6 +81,13 @@ type Props = {
     participantId: string,
 
     /**
+     * The videoType of the participant's (to be) video depicted by {@link ParticipantView}.
+     *
+     * @public
+     */
+     videoType: string,
+
+    /**
      * The style, if any, to apply to {@link ParticipantView} in addition to its
      * default style.
      */
@@ -238,6 +245,7 @@ class ParticipantView extends Component<Props> {
                     && <View style = { styles.avatarContainer }>
                         <Avatar
                             participantId = { this.props.participantId }
+                            videoType = { this.props.videoType } // mabocoglu: video türünü veriyoruz ki, ona göre işlem yapılsın.
                             size = { this.props.avatarSize } />
                     </View> }
 
@@ -266,7 +274,7 @@ class ParticipantView extends Component<Props> {
  * @returns {Props}
  */
 function _mapStateToProps(state, ownProps) {
-    const { disableVideo, participantId } = ownProps;
+    const { disableVideo, participantId, videoType } = ownProps;
     const participant = getParticipantById(state, participantId);
     let connectionStatus;
     let participantName;
@@ -277,12 +285,13 @@ function _mapStateToProps(state, ownProps) {
                 || JitsiParticipantConnectionStatus.ACTIVE,
         _isFakeParticipant: participant && participant.isFakeParticipant,
         _participantName: participantName,
-        _renderVideo: shouldRenderParticipantVideo(state, participantId) && !disableVideo,
+        _renderVideo: shouldRenderParticipantVideo(state, participantId, videoType) && !disableVideo,
         _videoTrack:
             getTrackByMediaTypeAndParticipant(
                 state['features/base/tracks'],
                 MEDIA_TYPE.VIDEO,
-                participantId)
+                participantId,
+                videoType )
     };
 }
 

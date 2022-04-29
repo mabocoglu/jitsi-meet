@@ -18,7 +18,7 @@ export default {
      * The display name container.
      */
     displayNameContainer: {
-        alignSelf: 'center',
+        alignSelf: 'flex-end',
         bottom: 0,
         flex: 1,
         margin: 4,

@@ -240,6 +240,7 @@ class Filmstrip extends Component <Props> {
                             onMouseOver = { this._onMouseOver }
                             style = { filmstripRemoteVideosContainerStyle }>
                             <div id = 'localVideoTileViewContainer' />
+                            <div id = 'localVideoDesktopTileViewContainer' />
                         </div>
                     </div>
                 </div>

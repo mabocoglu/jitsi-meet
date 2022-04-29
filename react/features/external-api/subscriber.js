@@ -44,13 +44,14 @@ StateListenerRegistry.register(
  * Updates the on stage participant value.
  */
 StateListenerRegistry.register(
-    /* selector */ state => state['features/large-video'].participantId,
-    /* listener */ (participantId, store) => {
+    /* selector */ state => state['features/large-video'],
+    /* listener */ (participant, store) => {
         const videoTrack = getTrackByMediaTypeAndParticipant(
-            store.getState()['features/base/tracks'], MEDIA_TYPE.VIDEO, participantId);
+            store.getState()['features/base/tracks'], MEDIA_TYPE.VIDEO, participant.participantId, participant.videoType);
 
-        if (videoTrack && videoTrack.videoType === VIDEO_TYPE.CAMERA) {
-            APP.API.notifyOnStageParticipantChanged(participantId);
+        // https://github.com/jitsi/jitsi-meet/commit/c5438ecd0c6c9e13510eec8cf08ff08e6a58bb80#diff-f08529692d75f6fdbf2cc56aa558701490ba35bd9e2cb7716d67187115fd934d
+        if (videoTrack) {
+            APP.API.notifyOnStageParticipantChanged(participant.participantId, participant.videoType);
         }
     }
 );

@@ -517,6 +517,65 @@ export default class SharedVideoManager {
     }
 
     /**
+     * Stop shared video if it is currently showed. If the user started the
+     * shared video is the one in the id (called when user
+     * left and we want to remove video if the user sharing it left).
+     * @param id the id of the sender of the command
+     */
+    onSharedVideoDesktopStop(id, attributes) {
+        if (!this.isSharedVideoShown) {
+            return;
+        }
+
+        if (this.from !== id) {
+            return;
+        }
+
+        if (!this.player) {
+            // if there is no error in the player till now,
+            // store the initial attributes
+            if (!this.errorInPlayer) {
+                this.initialAttributes = attributes;
+
+                return;
+            }
+        }
+
+        this.emitter.removeListener(UIEvents.AUDIO_MUTED,
+            this.localAudioMutedListener);
+        this.localAudioMutedListener = null;
+
+        APP.store.dispatch(participantLeft(this.url, APP.conference._room));
+
+        VideoLayout.showLargeVideoContainer(SHARED_VIDEO_CONTAINER_TYPE, false)
+            .then(() => {
+                VideoLayout.removeLargeVideoContainer(
+                    SHARED_VIDEO_CONTAINER_TYPE);
+
+                if (this.player) {
+                    this.player.destroy();
+                    this.player = null;
+                } else if (this.errorInPlayer) {
+                    // if there is an error in player, remove that instance
+                    this.errorInPlayer.destroy();
+                    this.errorInPlayer = null;
+                }
+                this.smartAudioUnmute();
+
+                // revert to original behavior (prevents pausing
+                // for participants not sharing the video to pause it)
+                $('#sharedVideo').css('pointer-events', 'auto');
+
+                this.emitter.emit(
+                    UIEvents.UPDATE_SHARED_VIDEO, null, 'removed');
+            });
+
+        this.url = null;
+        this.isSharedVideoShown = false;
+        this.initialAttributes = null;
+    }
+
+    /**
      * Receives events for local audio mute/unmute by local user.
      * @param muted boolena whether it is muted or not.
      * @param {boolean} indicates if this mute was a result of user interaction,

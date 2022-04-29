@@ -1,5 +1,6 @@
 // @flow
 
+import { VIDEO_TYPE } from '../base/media';
 import { PARTICIPANT_ID_CHANGED } from '../base/participants';
 import { ReducerRegistry } from '../base/redux';
 
@@ -8,7 +9,7 @@ import {
     UPDATE_KNOWN_LARGE_VIDEO_RESOLUTION
 } from './actionTypes';
 
-ReducerRegistry.register('features/large-video', (state = {}, action) => {
+ReducerRegistry.register('features/large-video', (state = {}, action) => { 
     switch (action.type) {
 
     // When conference is joined, we update ID of local participant from default
@@ -20,7 +21,8 @@ ReducerRegistry.register('features/large-video', (state = {}, action) => {
         if (state.participantId === action.oldValue) {
             return {
                 ...state,
-                participantId: action.newValue
+                participantId: action.newValue,
+                videoType: VIDEO_TYPE.CAMERA // TODO: Is this temporary? Should be removed?
             };
         }
         break;
@@ -28,7 +30,8 @@ ReducerRegistry.register('features/large-video', (state = {}, action) => {
     case SELECT_LARGE_VIDEO_PARTICIPANT:
         return {
             ...state,
-            participantId: action.participantId
+            participantId: action.participantId,
+            videoType: action.participantId !== 'local' && action.videoType === undefined ? VIDEO_TYPE.CAMERA : action.videoType
         };
 
     case UPDATE_KNOWN_LARGE_VIDEO_RESOLUTION:

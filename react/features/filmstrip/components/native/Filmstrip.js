@@ -11,6 +11,7 @@ import { isFilmstripVisible } from '../../functions';
 import LocalThumbnail from './LocalThumbnail';
 import Thumbnail from './Thumbnail';
 import styles from './styles';
+import { MEDIA_TYPE } from '../../../base/media';
 
 /**
  * Filmstrip component's property types.
@@ -31,6 +32,13 @@ type Props = {
      * The participants in the conference.
      */
     _participants: Array<any>,
+
+    /**
+     * The participant videos in the conference.
+     *
+     * @private
+     */
+     _participantVideos: Array<any>,
 
     /**
      * The indicator which determines whether the filmstrip is visible.
@@ -115,11 +123,14 @@ class Filmstrip extends Component<Props> {
                     }
                     {
 
-                        this._sort(_participants, isNarrowAspectRatio)
+                            this._sortByParticipantsVideos(
+                                this.props._participants, this.props._participantVideos,
+                                isNarrowAspectRatio)
                             .map(p => (
                                 <Thumbnail
-                                    key = { p.id }
-                                    participant = { p } />))
+                                    key = { p.key }
+                                    participant = { p }
+                                    videoType = { p.videoType } />))
 
                     }
                     {
@@ -163,6 +174,50 @@ class Filmstrip extends Component<Props> {
 
         return sortedParticipants;
     }
+
+    /**
+     * Sorts a specific array of {@code Participant}s in display order.
+     *
+     * @param {Participant[]} participants - The array of {@code Participant}s
+     * to sort in display order.
+     * @param {object[]} participantsVideos - The array of {@code Participant}s' videos
+     * @param {boolean} isNarrowAspectRatio - Indicates if the aspect ratio is
+     * wide or narrow.
+     * @private
+     * @returns {Participant[]} A new array containing the elements of the
+     * specified {@code participants} array sorted in display order.
+     */
+     _sortByParticipantsVideos(participants, participantVideos, isNarrowAspectRatio) {
+        // XXX Array.prototype.sort() is not appropriate because (1) it operates
+        // in place and (2) it is not necessarily stable.
+
+        const sortedParticipants = [];
+
+        for (const participantVideo of participantVideos) {
+            let participant = this._getParticipant(participants, participantVideo.participantId)[0];
+
+            if (participant) {
+                participant.key = participant.id + '_' + participantVideo.videoType;
+                participant.videoType = participantVideo.videoType;
+    
+                sortedParticipants.push({ ...participant });
+            }
+            
+        }
+
+        if (isNarrowAspectRatio) {
+            // When the narrow aspect ratio is used, we want to have the remote
+            // participants from right to left with the newest added/joined to
+            // the leftmost side. The local participant is the leftmost item.
+            sortedParticipants.reverse();
+        }
+
+        return sortedParticipants;
+    }
+
+    _getParticipant(participants, participantId) {
+        return participants.filter(participant => participant.id && participant.id === participantId);
+    }
 }
 
 /**
@@ -174,12 +229,20 @@ class Filmstrip extends Component<Props> {
  */
 function _mapStateToProps(state) {
     const participants = state['features/base/participants'];
+    const tracks = state["features/base/tracks"];
     const { enabled } = state['features/filmstrip'];
 
     return {
         _aspectRatio: state['features/base/responsive-ui'].aspectRatio,
         _enabled: enabled,
         _participants: participants.filter(p => !p.local),
+         /**
+         * The remote participant videos in the conference.
+         *
+         * @private
+         * @type {object[]}
+         */
+          _participantVideos: tracks && tracks.filter(track => !track.local && track.jitsiTrack && track.mediaType === MEDIA_TYPE.VIDEO),
         _visible: isFilmstripVisible(state)
     };
 }

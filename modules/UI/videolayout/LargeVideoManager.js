@@ -331,11 +331,11 @@ export default class LargeVideoManager {
         if (this.newStreamData) {
             this.newStreamData.reject();
         }
-
+        
         this.newStreamData = createDeferred();
         this.newStreamData.id = userID;
         this.newStreamData.stream = stream;
-        this.newStreamData.videoType = videoType;
+        this.newStreamData.videoType = videoType || VIDEO_TYPE.CAMERA; // we may get undefined value from mobile app.
 
         this.scheduleLargeVideoUpdate();
 

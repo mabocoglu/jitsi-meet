@@ -42,7 +42,7 @@ class PictureInPictureModule extends ReactContextBaseJavaModule {
     public static final String NAME = "PictureInPicture";
     private static final String TAG = NAME;
 
-    private static boolean isSupported;
+    private boolean isSupported;
 
     public PictureInPictureModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -52,7 +52,7 @@ class PictureInPictureModule extends ReactContextBaseJavaModule {
         // Android Go devices don't support PiP. There doesn't seem to be a better way to detect it than
         // to use ActivityManager.isLowRamDevice().
         // https://stackoverflow.com/questions/58340558/how-to-detect-android-go
-        isSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !am.isLowRamDevice();
+        this.isSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !am.isLowRamDevice();
     }
 
     /**
@@ -64,7 +64,7 @@ class PictureInPictureModule extends ReactContextBaseJavaModule {
     @Override
     public Map<String, Object> getConstants() {
         Map<String, Object> constants = new HashMap<>();
-        constants.put("SUPPORTED", isSupported);
+        constants.put("SUPPORTED", this.isSupported);
         return constants;
     }
 
@@ -83,7 +83,7 @@ class PictureInPictureModule extends ReactContextBaseJavaModule {
      */
     @TargetApi(Build.VERSION_CODES.O)
     public void enterPictureInPicture() {
-        if (!isSupported) {
+        if (!this.isSupported) {
             throw new IllegalStateException("Picture-in-Picture not supported");
         }
 
@@ -127,7 +127,7 @@ class PictureInPictureModule extends ReactContextBaseJavaModule {
     }
 
     public boolean isPictureInPictureSupported() {
-        return isSupported;
+        return this.isSupported;
     }
 
     @Override

@@ -325,9 +325,10 @@ export function isLocalParticipantModerator(
  * @param {Object|Function} stateful - Object or function that can be resolved
  * to the Redux state.
  * @param {string} id - The ID of the participant.
+ * @param {string} videoType - The video type of the participant.
  * @returns {boolean}
  */
-export function shouldRenderParticipantVideo(stateful: Object | Function, id: string) {
+export function shouldRenderParticipantVideo(stateful: Object | Function, id: string, videoType: string) {
     const state = toState(stateful);
     const participant = getParticipantById(state, id);
 
@@ -337,7 +338,7 @@ export function shouldRenderParticipantVideo(stateful: Object | Function, id: st
 
     /* First check if we have an unmuted video track. */
     const videoTrack
-        = getTrackByMediaTypeAndParticipant(state['features/base/tracks'], MEDIA_TYPE.VIDEO, id);
+        = getTrackByMediaTypeAndParticipant(state['features/base/tracks'], MEDIA_TYPE.VIDEO, id, videoType);
 
     if (!shouldRenderVideoTrack(videoTrack, /* waitForVideoStarted */ false)) {
         return false;

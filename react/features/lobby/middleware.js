@@ -148,7 +148,8 @@ function _findLoadableAvatarForKnockingParticipant({ dispatch, getState }, { id 
     const updatedParticipant = getState()['features/lobby'].knockingParticipants.find(p => p.id === id);
     const { disableThirdPartyRequests } = getState()['features/base/config'];
 
-    if (!disableThirdPartyRequests && updatedParticipant && !updatedParticipant.loadableAvatarUrl) {
+    // if disableThirdPartyRequests is undefined, page acts as it is defined!
+    if (disableThirdPartyRequests !== undefined && !disableThirdPartyRequests && updatedParticipant && !updatedParticipant.loadableAvatarUrl) {
         getFirstLoadableAvatarUrl(updatedParticipant).then(loadableAvatarUrl => {
             if (loadableAvatarUrl) {
                 dispatch(participantIsKnockingOrUpdated({

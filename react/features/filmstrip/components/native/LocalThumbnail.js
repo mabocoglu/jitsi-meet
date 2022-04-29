@@ -30,9 +30,11 @@ class LocalThumbnail extends Component<Props> {
     render() {
         const { _localParticipant } = this.props;
 
-        return (
+         // FIXME: undefined video type coming from mobile app should be fixed!
+        
+         return (
             <View style = { styles.localThumbnail }>
-                <Thumbnail participant = { _localParticipant } />
+                <Thumbnail participant = { _localParticipant } videoType = { 'camera' } />
             </View>
         );
     }

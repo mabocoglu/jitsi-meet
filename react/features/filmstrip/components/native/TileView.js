@@ -14,6 +14,7 @@ import { setTileViewDimensions } from '../../actions.native';
 
 import Thumbnail from './Thumbnail';
 import styles from './styles';
+import { MEDIA_TYPE } from '../../../base/media';
 
 /**
  * The type of the React {@link Component} props of {@link TileView}.
@@ -34,6 +35,11 @@ type Props = {
      * The participants in the conference.
      */
     _participants: Array<Object>,
+
+    /**
+     * The participants in the conference.
+     */
+    _participantVideos: Array<Object>,
 
     /**
      * Application's viewport height.
@@ -90,7 +96,9 @@ class TileView extends Component<Props> {
      * @inheritdoc
      */
     componentDidUpdate() {
-        this._updateReceiverQuality();
+        //this._updateReceiverQuality();
+        // FIXME: Closed due to the error below. 
+        // Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops
     }
 
     /**
@@ -131,7 +139,7 @@ class TileView extends Component<Props> {
      * @private
      */
     _getColumnCount() {
-        const participantCount = this.props._participants.length;
+        const participantCount = this.props._participantVideos.length;
 
         // For narrow view, tiles should stack on top of each other for a lonely
         // call and a 1:1 call. Otherwise tiles should be grouped into rows of
@@ -158,17 +166,29 @@ class TileView extends Component<Props> {
         const participants = [];
         let localParticipant;
 
-        for (const participant of this.props._participants) {
-            if (participant.local) {
-                localParticipant = participant;
-            } else {
-                participants.push(participant);
+        // we fill the array by videos not endpoints.
+        for (const participantVideo of this.props._participantVideos) {
+            let participant = this._getParticipant(participantVideo.participantId)[0];
+
+            if (participant) {
+                participant.key = participant.id + '_' + participantVideo.videoType;
+                participant.videoType = participantVideo.videoType;
+    
+                if (participant.local) {
+                    localParticipant = {...participant};
+                } else {
+                    participants.push({...participant});
+                }
             }
         }
 
         localParticipant && participants.push(localParticipant);
 
         return participants;
+    }
+
+    _getParticipant(participantId) {
+        return this.props._participants.filter(participant => participant.id && participant.id === participantId);
     }
 
     /**
@@ -178,9 +198,9 @@ class TileView extends Component<Props> {
      * @returns {Object}
      */
     _getTileDimensions() {
-        const { _height, _participants, _width } = this.props;
+        const { _height, _participantVideos, _width } = this.props;
         const columns = this._getColumnCount();
-        const participantCount = _participants.length;
+        const participantCount = _participantVideos.length;
         const heightToUse = _height - (MARGIN * 2);
         const widthToUse = _width - (MARGIN * 2);
         let tileWidth;
@@ -248,8 +268,9 @@ class TileView extends Component<Props> {
             .map(participant => (
                 <Thumbnail
                     disableTint = { true }
-                    key = { participant.id }
+                    key = { participant.key }
                     participant = { participant }
+                    videoType={participant.videoType}
                     renderDisplayName = { true }
                     styleOverrides = { styleOverrides }
                     tileView = { true } />));
@@ -288,6 +309,7 @@ function _mapStateToProps(state) {
         _aspectRatio: responsiveUi.aspectRatio,
         _height: responsiveUi.clientHeight,
         _participants: state['features/base/participants'],
+        _participantVideos: state["features/base/tracks"].filter(track => track.jitsiTrack && track.mediaType === MEDIA_TYPE.VIDEO),
         _width: responsiveUi.clientWidth
     };
 }

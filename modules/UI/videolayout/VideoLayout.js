@@ -16,6 +16,7 @@ import SharedVideoThumb from '../shared_video/SharedVideoThumb';
 
 import LargeVideoManager from './LargeVideoManager';
 import LocalVideo from './LocalVideo';
+import LocalVideoDesktop from './LocalVideoDesktop';
 import RemoteVideo from './RemoteVideo';
 import { VIDEO_CONTAINER_TYPE } from './VideoContainer';
 
@@ -23,6 +24,7 @@ const logger = Logger.getLogger(__filename);
 
 const remoteVideos = {};
 let localVideoThumbnail = null;
+let localVideoDesktopThumbnail = null;
 
 let eventEmitter = null;
 
@@ -53,6 +55,7 @@ function onLocalFlipXChanged(val) {
 function getAllThumbnails() {
     return [
         ...localVideoThumbnail ? [ localVideoThumbnail ] : [],
+        ...localVideoDesktopThumbnail ? [ localVideoDesktopThumbnail ] : [],
         ...Object.values(remoteVideos)
     ];
 }
@@ -74,7 +77,7 @@ const VideoLayout = {
         localVideoThumbnail = new LocalVideo(
             VideoLayout,
             emitter,
-            this._updateLargeVideoIfDisplayed.bind(this));
+            this._updateLargeVideoIfDisplayed2.bind(this));
 
         this.registerListeners();
     },
@@ -117,9 +120,14 @@ const VideoLayout = {
      */
     setAudioLevel(id, lvl) {
         const smallVideo = this.getSmallVideo(id);
+        const smallVideoDesktop = this.getSmallVideo(id, true);
 
         if (smallVideo) {
             smallVideo.updateAudioLevelIndicator(lvl);
+        }
+
+        if (smallVideoDesktop) {
+            smallVideoDesktop.updateAudioLevelIndicator(lvl);
         }
 
         if (largeVideo && id === largeVideo.id) {
@@ -127,14 +135,40 @@ const VideoLayout = {
         }
     },
 
+    addLocalVideoDesktop(stream) {
+
+            this.addVideoDesktop();
+
+            const localId = getLocalParticipant().id;
+    
+            localVideoDesktopThumbnail.changeVideo(stream);
+    
+            this._updateLargeVideoIfDisplayed2(localId, true);
+
+            this.refreshLayout();
+    },
+
+    addVideoDesktop() {
+        localVideoDesktopThumbnail = new LocalVideoDesktop(
+            VideoLayout,
+            eventEmitter,
+            this._updateLargeVideoIfDisplayed2.bind(this));
+    },
+
+    removeLocalVideoDesktop() {
+        if (localVideoDesktopThumbnail) {
+            localVideoDesktopThumbnail.remove();
+            localVideoDesktopThumbnail = null;
+        }
+    },
+
     changeLocalVideo(stream) {
-        const localId = getLocalParticipant().id;
 
-        this.onVideoTypeChanged(localId, stream.videoType);
+            const localId = getLocalParticipant().id;
+    
+            localVideoThumbnail.changeVideo(stream);
 
-        localVideoThumbnail.changeVideo(stream);
-
-        this._updateLargeVideoIfDisplayed(localId);
+            this._updateLargeVideoIfDisplayed2(localId, false);
     },
 
     /**
@@ -148,6 +182,10 @@ const VideoLayout = {
         // only contains a ReactElement. Then remove this call once the
         // Filmstrip is fully in React.
         localVideoThumbnail.updateIndicators();
+
+        if (localVideoDesktopThumbnail) {
+            localVideoDesktopThumbnail.updateIndicators();
+        }
     },
 
     /**
@@ -156,11 +194,31 @@ const VideoLayout = {
      */
     setLocalVideoVisible(visible) {
         localVideoThumbnail.setVisible(visible);
+        if (localVideoDesktopThumbnail) {
+            localVideoDesktopThumbnail.setVisible(visible);
+        }
     },
 
     onRemoteStreamAdded(stream) {
         const id = stream.getParticipantId();
-        const remoteVideo = remoteVideos[id];
+        
+        let remoteId = undefined;
+        if (stream.getType() === MEDIA_TYPE.VIDEO) {
+            remoteId = id + "_" + stream.videoType;
+        } else if (stream.getType() === MEDIA_TYPE.AUDIO) { // we should add audio stream to camera side
+            remoteId = id + "_" + VIDEO_TYPE.CAMERA;
+        } else {
+            remoteId = id;
+        }
+
+        var remoteVideo = remoteVideos[remoteId];
+        if (stream.videoType === VIDEO_TYPE.DESKTOP) {
+            const jitsiParticipant = APP.conference.getParticipantById(id);
+            remoteVideo = new RemoteVideo(jitsiParticipant, VideoLayout, VIDEO_TYPE.DESKTOP);
+
+            this._setRemoteControlProperties(jitsiParticipant, remoteVideo);
+            this.addRemoteVideoContainer(remoteId, remoteVideo);
+        }
 
         logger.debug(`Received a new ${stream.getType()} stream for ${id}`);
 
@@ -176,23 +234,37 @@ const VideoLayout = {
         if (stream.getType() === 'audio') {
             this.onAudioMute(id, stream.isMuted());
         } else {
-            this.onVideoMute(id, stream.isMuted());
-            remoteVideo.setScreenSharing(stream.videoType === 'desktop');
+            if (stream.videoType !== VIDEO_TYPE.DESKTOP) {
+                this.onVideoMute(id, stream.isMuted());
+            }
+            
+            remoteVideo.setScreenSharing(stream.videoType === VIDEO_TYPE.DESKTOP);
         }
     },
 
     onRemoteStreamRemoved(stream) {
-        const id = stream.getParticipantId();
-        const remoteVideo = remoteVideos[id];
+        let id = stream.getParticipantId();
+        let remoteId = id;
+        let isDesktop = false;
+
+        if (stream.getType() === MEDIA_TYPE.VIDEO) {
+            remoteId = id + "_" + stream.videoType;
+            isDesktop = stream.videoType === VIDEO_TYPE.DESKTOP;
+        }
+
+        const remoteVideo = remoteVideos[remoteId];
 
         // Remote stream may be removed after participant left the conference.
 
         if (remoteVideo) {
             remoteVideo.removeRemoteStreamElement(stream);
-            remoteVideo.setScreenSharing(false);
         }
 
-        this.updateMutedForNoTracks(id, stream.getType());
+        if (isDesktop) {
+            this.removeParticipantDesktopContainer(id);
+        } else {
+            this.updateMutedForNoTracks(id, stream.getType(), stream.videoType);
+        }
     },
 
     /**
@@ -202,14 +274,15 @@ const VideoLayout = {
      * If participant has no tracks will make the UI display muted status.
      * @param {string} participantId
      * @param {string} mediaType 'audio' or 'video'
+     * @param {string} videoType 'camera' or 'desktop'
      */
-    updateMutedForNoTracks(participantId, mediaType) {
+    updateMutedForNoTracks(participantId, mediaType, videoType) {
         const participant = APP.conference.getParticipantById(participantId);
 
-        if (participant && !participant.getTracksByMediaType(mediaType).length) {
+        if (participant && !participant.getTracksByMediaType(mediaType).length) { // TODO: check again
             if (mediaType === 'audio') {
                 APP.UI.setAudioMuted(participantId, true);
-            } else if (mediaType === 'video') {
+            } else if (mediaType === 'video' && (!videoType || videoType !== VIDEO_TYPE.DESKTOP)) {
                 APP.UI.setVideoMuted(participantId, true);
             } else {
                 logger.error(`Unsupported media type: ${mediaType}`);
@@ -261,17 +334,18 @@ const VideoLayout = {
     /**
      * Callback invoked to update display when the pin participant has changed.
      *
-     * @paramn {string|null} pinnedParticipantID - The participant ID of the
+     * @param {string|null} pinnedParticipantID - The participant ID of the
      * participant that is pinned or null if no one is pinned.
+     * @param {VIDEO_TYPE} videoType - videoType of pinned participant
      * @returns {void}
      */
-    onPinChange(pinnedParticipantID) {
+    onPinChange(pinnedParticipantID, videoType) {
         if (interfaceConfig.filmStripOnly) {
             return;
         }
 
         getAllThumbnails().forEach(thumbnail =>
-            thumbnail.focus(pinnedParticipantID === thumbnail.getId()));
+            thumbnail.focus(pinnedParticipantID === thumbnail.getId() && (!videoType || videoType === thumbnail.videoType)));
     },
 
     /**
@@ -290,20 +364,41 @@ const VideoLayout = {
                 SHARED_VIDEO_CONTAINER_TYPE,
                 VideoLayout);
 
-            this.addRemoteVideoContainer(participant.id, sharedVideoThumb);
+            this.addRemoteVideoContainer(participant.id + "_camera", sharedVideoThumb);
 
             return;
         }
 
         const id = participant.id;
         const jitsiParticipant = APP.conference.getParticipantById(id);
-        const remoteVideo = new RemoteVideo(jitsiParticipant, VideoLayout);
+        const remoteVideo = new RemoteVideo(jitsiParticipant, VideoLayout, VIDEO_TYPE.CAMERA);
 
         this._setRemoteControlProperties(jitsiParticipant, remoteVideo);
-        this.addRemoteVideoContainer(id, remoteVideo);
+        this.addRemoteVideoContainer(id + "_camera", remoteVideo);
+
+        this.updateMutedForNoTracks(id, 'audio');
+        this.updateMutedForNoTracks(id, 'video', VIDEO_TYPE.CAMERA); // TODO: check again
+    },
+
+    /**
+     * Creates a participant container for the given id.
+     *
+     * @param {string} participantId - The redux representation of a remote
+     * participant id.
+     * @returns {RemoteVideo} remoteVideo the remote video instance to add stream into.
+     */
+    addRemoteParticipantContainerAndReturnRemoveVideo(participantId) {
+
+        const jitsiParticipant = APP.conference.getParticipantById(participantId);
+        const remoteVideo = new RemoteVideo(jitsiParticipant, VideoLayout, VIDEO_TYPE.DESKTOP);
+
+        this._setRemoteControlProperties(jitsiParticipant, remoteVideo);
+        this.addRemoteVideoContainer(id + "_desktop", remoteVideo);
 
         this.updateMutedForNoTracks(id, 'audio');
         this.updateMutedForNoTracks(id, 'video');
+
+        return remoteVideo;
     },
 
     /**
@@ -321,12 +416,15 @@ const VideoLayout = {
     },
 
     // FIXME: what does this do???
-    remoteVideoActive(videoElement, resourceJid) {
+    remoteVideoActive(videoElement, videoType, resourceJid) {
         logger.info(`${resourceJid} video is now active`, videoElement);
         if (videoElement) {
             $(videoElement).show();
         }
-        this._updateLargeVideoIfDisplayed(resourceJid, true);
+
+        let isDesktop = videoType === VIDEO_TYPE.DESKTOP;
+
+        this._updateLargeVideoIfDisplayed2(resourceJid, isDesktop, true);
     },
 
     /**
@@ -336,7 +434,7 @@ const VideoLayout = {
         if (APP.conference.isLocalId(id)) {
             localVideoThumbnail.showAudioIndicator(isMuted);
         } else {
-            const remoteVideo = remoteVideos[id];
+            const remoteVideo = remoteVideos[id + "_camera"]; // no audio on desktop track
 
             if (!remoteVideo) {
                 return;
@@ -354,7 +452,7 @@ const VideoLayout = {
         if (APP.conference.isLocalId(id)) {
             localVideoThumbnail && localVideoThumbnail.setVideoMutedView(value);
         } else {
-            const remoteVideo = remoteVideos[id];
+            const remoteVideo = remoteVideos[id + "_camera"]; // mute only for camera
 
             if (remoteVideo) {
                 remoteVideo.setVideoMutedView(value);
@@ -362,7 +460,7 @@ const VideoLayout = {
         }
 
         // large video will show avatar instead of muted stream
-        this._updateLargeVideoIfDisplayed(id, true);
+        this._updateLargeVideoIfDisplayed2(id, false, true);
     },
 
     /**
@@ -372,11 +470,26 @@ const VideoLayout = {
         if (id === 'localVideoContainer'
             || APP.conference.isLocalId(id)) {
             localVideoThumbnail.updateDisplayName();
+        } else if (id === 'localVideoDesktopContainer'
+            || APP.conference.isLocalId(id)) {
+            if (localVideoDesktopThumbnail) {
+                localVideoDesktopThumbnail.updateDisplayName();
+            }
         } else {
-            const remoteVideo = remoteVideos[id];
+            let remoteVideo = remoteVideos[id];
 
             if (remoteVideo) {
                 remoteVideo.updateDisplayName();
+            } else { // Eğer video tipi varsa
+                remoteVideo = remoteVideos[id + "_camera"];
+                if (remoteVideo) {
+                    remoteVideo.updateDisplayName();
+                }
+                
+                remoteVideo = remoteVideos[id + "_desktop"];
+                if (remoteVideo) {
+                    remoteVideo.updateDisplayName();
+                }
             }
         }
     },
@@ -404,11 +517,12 @@ const VideoLayout = {
             return;
         }
 
+        let isDesktop = false;
         // We have to trigger full large video update to transition from
         // avatar to video on connectivity restored.
-        this._updateLargeVideoIfDisplayed(id, true);
-
-        const remoteVideo = remoteVideos[id];
+        
+        
+        let remoteVideo = remoteVideos[id];
 
         if (remoteVideo) {
             // Updating only connection status indicator is not enough, because
@@ -416,8 +530,25 @@ const VideoLayout = {
             // (due to 'muted while disconnected' condition) we may want to show
             // the video stream again and in order to do that the display mode
             // must be updated.
-            // remoteVideo.updateConnectionStatusIndicator(isActive);
+            this._updateLargeVideoIfDisplayed2(id, false, true);
+            remoteVideo.updateConnectionStatusIndicator();
             remoteVideo.updateView();
+        } else {
+            remoteVideo = remoteVideos[id + "_camera"];
+
+            if (remoteVideo) {
+                this._updateLargeVideoIfDisplayed2(id, false, true);
+                remoteVideo.updateConnectionStatusIndicator();
+                remoteVideo.updateView();
+            }
+
+            remoteVideo = remoteVideos[id + "_desktop"];
+
+            if (remoteVideo) {
+                this._updateLargeVideoIfDisplayed2(id, true, true);
+                remoteVideo.updateConnectionStatusIndicator();
+                remoteVideo.updateView();
+            } 
         }
     },
 
@@ -445,11 +576,28 @@ const VideoLayout = {
      * @private
      */
     _updateRemoteVideo(id) {
-        const remoteVideo = remoteVideos[id];
+        let remoteVideo = remoteVideos[id];
 
         if (remoteVideo) {
             remoteVideo.updateView();
-            this._updateLargeVideoIfDisplayed(id);
+            let isDesktop = false; // TODO: we should get video type
+            this._updateLargeVideoIfDisplayed2(id, isDesktop);
+        }
+
+        remoteVideo = remoteVideos[id + "_camera"];
+
+        if (remoteVideo) {
+            remoteVideo.updateView();
+            let isDesktop = false; // TODO: we should get video type
+            this._updateLargeVideoIfDisplayed2(id, isDesktop);
+        }
+
+        remoteVideo = remoteVideos[id + "_desktop"];
+
+        if (remoteVideo) {
+            remoteVideo.updateView();
+            let isDesktop = true; // TODO: we should get video type
+            this._updateLargeVideoIfDisplayed2(id, isDesktop);
         }
     },
 
@@ -458,13 +606,16 @@ const VideoLayout = {
      */
     hideStats() {
         for (const video in remoteVideos) { // eslint-disable-line guard-for-in
-            const remoteVideo = remoteVideos[video];
+            const remoteVideo = remoteVideos[video]; // TODO: can we use video type as a key?
 
             if (remoteVideo) {
                 remoteVideo.removeConnectionIndicator();
             }
         }
         localVideoThumbnail.removeConnectionIndicator();
+        if (localVideoDesktopThumbnail) {
+            localVideoDesktopThumbnail.removeConnectionIndicator();
+        }
     },
 
     removeParticipantContainer(id) {
@@ -474,9 +625,11 @@ const VideoLayout = {
             APP.store.dispatch(pinParticipant(null));
         }
 
-        const remoteVideo = remoteVideos[id];
+        const remoteVideo = remoteVideos[id + "_camera"];
+        var remoteVideoVarMi = false;
 
         if (remoteVideo) {
+            remoteVideoVarMi = true;
             // Remove remote video
             logger.info(`Removing remote video: ${id}`);
             delete remoteVideos[id];
@@ -486,7 +639,27 @@ const VideoLayout = {
         }
     },
 
+    removeParticipantDesktopContainer(id) {
+        // Unlock large video
+        if (this.getPinnedId() === id) {
+            logger.info('Focused video owner has left the conference');
+            APP.store.dispatch(pinParticipant(null));
+        }
+
+        const remoteVideo = remoteVideos[id + "_desktop"];
+
+        if (remoteVideo) {
+            // Remove remote video
+            logger.info(`Removing remote desktop video: ${id}`);
+            delete remoteVideos[id];
+            remoteVideo.remove();
+        } else {
+            logger.warn(`No remote desktop video for ${id}`);
+        }
+    },
+
     onVideoTypeChanged(id, newVideoType) {
+        // TODO: check. video type should not be changed!
         const remoteVideo = remoteVideos[id];
 
         if (!remoteVideo) {
@@ -494,7 +667,7 @@ const VideoLayout = {
         }
 
         logger.info('Peer video type changed: ', id, newVideoType);
-        remoteVideo.setScreenSharing(newVideoType === 'desktop');
+        remoteVideo.setScreenSharing(newVideoType === VIDEO_TYPE.DESKTOP);
     },
 
     /**
@@ -507,27 +680,36 @@ const VideoLayout = {
         }
     },
 
-    getSmallVideo(id) {
+    getSmallVideo(id, isDesktop = false) {
         if (APP.conference.isLocalId(id)) {
-            return localVideoThumbnail;
+
+            return isDesktop && isDesktop === true ? localVideoDesktopThumbnail : localVideoThumbnail;
         }
 
-        return remoteVideos[id];
+        return remoteVideos[id + (isDesktop ? "_desktop" : "_camera")];
 
     },
 
-    changeUserAvatar(id, avatarUrl) {
+    changeUserAvatar(id, videoType) {
         const smallVideo = VideoLayout.getSmallVideo(id);
+        const smallVideoDesktop = VideoLayout.getSmallVideo(id, true);
 
         if (smallVideo) {
             smallVideo.initializeAvatar();
-        } else {
+        } 
+
+        if (smallVideoDesktop) {
+            smallVideoDesktop.initializeAvatar();
+        }
+
+        if (!smallVideo && !smallVideoDesktop) {
             logger.warn(
                 `Missed avatar update - no small video yet for ${id}`
             );
         }
-        if (this.isCurrentlyOnLarge(id)) {
-            largeVideo.updateAvatar(avatarUrl);
+
+        if (this.isCurrentlyOnLarge2(id, videoType)) {
+            largeVideo.updateAvatar();
         }
     },
 
@@ -547,6 +729,10 @@ const VideoLayout = {
         return largeVideo && largeVideo.id === id;
     },
 
+    isCurrentlyOnLarge2(id, videoType) {
+        return largeVideo && largeVideo.id === (id + "_" + videoType);
+    },
+
     /**
      * Triggers an update of remote video and large video displays so they may
      * pick up any state changes that have occurred elsewhere.
@@ -557,7 +743,7 @@ const VideoLayout = {
         const displayedUserId = this.getLargeVideoID();
 
         if (displayedUserId) {
-            this.updateLargeVideo(displayedUserId, true);
+            this.updateLargeVideo(displayedUserId, null, true);
         }
 
         Object.keys(remoteVideos).forEach(video => {
@@ -565,15 +751,16 @@ const VideoLayout = {
         });
     },
 
-    updateLargeVideo(id, forceUpdate) {
+    updateLargeVideo(id, videoType, forceUpdate) {
         if (!largeVideo) {
             return;
         }
         const currentContainer = largeVideo.getCurrentContainer();
         const currentContainerType = largeVideo.getCurrentContainerType();
-        const isOnLarge = this.isCurrentlyOnLarge(id);
+        const isOnLarge = this.isCurrentlyOnLarge2(id, videoType);
         const state = APP.store.getState();
-        const videoTrack = getTrackByMediaTypeAndParticipant(state['features/base/tracks'], MEDIA_TYPE.VIDEO, id);
+        const _videoType = videoType ? videoType : VIDEO_TYPE.CAMERA;
+        const videoTrack = getTrackByMediaTypeAndParticipant(state['features/base/tracks'], MEDIA_TYPE.VIDEO, id, _videoType);
         const videoStream = videoTrack?.jitsiTrack;
 
         if (isOnLarge && !forceUpdate
@@ -590,9 +777,8 @@ const VideoLayout = {
         }
 
         if (!isOnLarge || forceUpdate) {
-            const videoType = this.getRemoteVideoType(id);
-
-
+            // we already know the videoType
+            // const videoType = this.getRemoteVideoType(id);
             largeVideo.updateLargeVideo(
                 id,
                 videoStream,
@@ -758,10 +944,12 @@ const VideoLayout = {
      */
     refreshLayout() {
         localVideoThumbnail && localVideoThumbnail.updateDOMLocation();
+        localVideoDesktopThumbnail && localVideoDesktopThumbnail.updateDOMLocation();
         VideoLayout.resizeVideoArea();
 
         // Rerender the thumbnails since they are dependant on the layout because of the tooltip positioning.
         localVideoThumbnail && localVideoThumbnail.rerender();
+        localVideoDesktopThumbnail && localVideoDesktopThumbnail.rerender();
         Object.values(remoteVideos).forEach(remoteVideoThumbnail => remoteVideoThumbnail.rerender());
     },
 
@@ -797,6 +985,11 @@ const VideoLayout = {
             localVideoThumbnail.remove();
             localVideoThumbnail = null;
         }
+
+        if (localVideoDesktopThumbnail) {
+            localVideoDesktopThumbnail.remove();
+            localVideoDesktopThumbnail = null;
+        }
     },
 
     /**
@@ -809,9 +1002,11 @@ const VideoLayout = {
      * happen no matter what.
      * @returns {void}
      */
-    _updateLargeVideoIfDisplayed(participantId, force = false) {
-        if (this.isCurrentlyOnLarge(participantId)) {
-            this.updateLargeVideo(participantId, force);
+    _updateLargeVideoIfDisplayed2(participantId, isDesktop, force = false) {
+        let videoType = isDesktop ? VIDEO_TYPE.DESKTOP : VIDEO_TYPE.CAMERA;
+
+        if (this.isCurrentlyOnLarge2(participantId, videoType)) {
+            this.updateLargeVideo(participantId, videoType, force);
         }
     },
 

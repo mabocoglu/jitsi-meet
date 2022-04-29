@@ -303,6 +303,7 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
         this._participants = {};
         this._myUserID = undefined;
         this._onStageParticipant = undefined;
+        this._onStageParticipantVideoType = undefined;
         this._setupListeners();
         id++;
     }
@@ -387,6 +388,14 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
         return this._onStageParticipant;
     }
 
+    /**
+     * Returns the video type of the on stage participant.
+     *
+     * @returns {string} - The video type of the on stage participant.
+     */
+    _getOnStageParticipantVideoType() {
+        return this._onStageParticipantVideoType;
+    }
 
     /**
      * Getter for the large video element in Jitsi Meet.
@@ -410,11 +419,13 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
      * Getter for participant specific video element in Jitsi Meet.
      *
      * @param {string|undefined} participantId - Id of participant to return the video for.
+     * 
+     * @param {VIDEO_TYPE|undefined} videoType - video type of participant video.
      *
      * @returns {HTMLElement|undefined} - The requested video. Will return the local video
      * by default if participantId is undefined.
      */
-    _getParticipantVideo(participantId) {
+    _getParticipantVideo(participantId, videoType =  'camera') {
         const iframe = this.getIFrame();
 
         if (!iframe
@@ -424,10 +435,14 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
         }
 
         if (typeof participantId === 'undefined' || participantId === this._myUserID) {
-            return iframe.contentWindow.document.getElementById('localVideo_container');
+            return videoType && videoType === 'desktop' 
+            ? iframe.contentWindow.document.getElementById('localVideoDesktop_container')
+            : iframe.contentWindow.document.getElementById('localVideo_container');
         }
 
-        return iframe.contentWindow.document.querySelector(`#participant_${participantId} video`);
+        return videoType 
+        ? iframe.contentWindow.document.querySelector(`#participant_${participantId} video`)
+        : iframe.contentWindow.document.querySelector(`#participant_${participantId}_${videoType} video`);
     }
 
     /**
@@ -464,6 +479,7 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
     _setupListeners() {
         this._transport.on('event', ({ name, ...data }) => {
             const userID = data.id;
+            const userVideoType = data.videoType;
 
             switch (name) {
             case 'video-conference-joined': {
@@ -518,6 +534,7 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
             }
             case 'on-stage-participant-changed':
                 this._onStageParticipant = userID;
+                this._onStageParticipantVideoType = userVideoType;
                 this.emit('largeVideoChanged');
                 break;
             case 'large-video-visibility-changed':
@@ -978,6 +995,18 @@ export default class JitsiMeetExternalAPI extends EventEmitter {
         if (width <= this._width && height <= this._height) {
             this.executeCommand('resizeLargeVideo', width, height);
         }
+    }
+
+    /**
+     * Gets participant's id if which is in large video
+     *
+     * @returns {Promise} - Resolves with participant's id if the available, with
+     * undefined if not and rejects on failure.
+     */
+    getLargeVideoParticipantId() {
+        return this._transport.sendRequest({
+            name: 'get-large-video-participant'
+        });
     }
 
     /**

@@ -25,6 +25,11 @@ export type Props = AbstractButtonProps & {
     participantID: string,
 
     /**
+     * The video type of the participant that this button is supposed to pin.
+     */
+     videoType: string,
+
+    /**
      * The function to be used to translate i18n labels.
      */
     t: Function
@@ -48,7 +53,7 @@ class PinButton extends AbstractButton<Props, *> {
         const { dispatch } = this.props;
 
         // Pin participant, it will automatically exit the tile view
-        dispatch(pinParticipant(this.props.participantID));
+        dispatch(pinParticipant(this.props.participantID, this.props.videoType));
     }
 }
 

@@ -360,7 +360,7 @@ function _maybePlaySounds({ getState, dispatch }, action) {
  * @returns {Object} The value returned by {@code next(action)}.
  */
 function _participantJoinedOrUpdated({ dispatch, getState }, next, action) {
-    const { participant: { avatarURL, e2eeEnabled, email, id, local, name, raisedHand } } = action;
+    const { participant: { avatarURL, e2eeEnabled, email, id, local, name, raisedHand, videoType } } = action;
 
     // Send an external update of the local participant's raised hand state
     // if a new raised hand state is defined in the action.
@@ -391,7 +391,7 @@ function _participantJoinedOrUpdated({ dispatch, getState }, next, action) {
 
     const { disableThirdPartyRequests } = getState()['features/base/config'];
 
-    if (!disableThirdPartyRequests && (avatarURL || email || id || name)) {
+    if (disableThirdPartyRequests !== undefined && !disableThirdPartyRequests && (avatarURL || email || id || name)) {
         const participantId = !id && local ? getLocalParticipant(getState()).id : id;
         const updatedParticipant = getParticipantById(getState(), participantId);
 
@@ -403,10 +403,10 @@ function _participantJoinedOrUpdated({ dispatch, getState }, next, action) {
 
     // Notify external listeners of potential avatarURL changes.
     if (typeof APP === 'object') {
-        const currentKnownId = local ? APP.conference.getMyUserId() : id;
+        const currentKnownId = local ? APP.conference.getMyUserId() : (videoType ? id + "_" + videoType : id);
 
         // Force update of local video getting a new id.
-        APP.UI.refreshAvatarDisplay(currentKnownId);
+        APP.UI.refreshAvatarDisplay(currentKnownId, videoType);
     }
 
     return result;

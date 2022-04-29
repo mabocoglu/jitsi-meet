@@ -135,6 +135,11 @@ type Props = {
     videoSsrc: number,
 
     /**
+     * The video SSRC of this client.
+     */
+    desktopSsrc: number,
+
+    /**
      * Statistics related to transports.
      */
     transport: Array<Object>
@@ -185,6 +190,7 @@ class ConnectionStatsTable extends Component<Props> {
                     { isLocalVideo ? this._renderRegion() : null }
                     { this._renderAudioSsrc() }
                     { this._renderVideoSsrc() }
+                    { this._renderVideoDesktopSsrc() }
                     { this._renderParticipantId() }
                 </tbody>
             </table>
@@ -287,6 +293,26 @@ class ConnectionStatsTable extends Component<Props> {
                     <span>{ t('connectionindicator.video_ssrc') }</span>
                 </td>
                 <td>{ videoSsrc || 'N/A' }</td>
+            </tr>
+        );
+    }
+
+    /**
+     * Creates a table row as a ReactElement for displaying the video desktop ssrc.
+     * This will typically be something like "Desktop SSRC: 12345".
+     *
+     * @returns {JSX.Element}
+     * @private
+     */
+    _renderVideoDesktopSsrc() {
+        const { desktopSsrc, t } = this.props;
+
+        return (
+            <tr>
+                <td>
+                    <span>{ t('connectionindicator.video_desktop_ssrc') }</span>
+                </td>
+                <td>{ desktopSsrc || 'N/A' }</td>
             </tr>
         );
     }

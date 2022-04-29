@@ -115,6 +115,18 @@ export const PARTICIPANT_KICKED = 'PARTICIPANT_KICKED';
 export const PARTICIPANT_LEFT = 'PARTICIPANT_LEFT';
 
 /**
+ * Action to handle case when participant stopped screen sharing.
+ *
+ * {
+ *     type: PARTICIPANT_STOPPED_SCREEN_SHARE,
+ *     participant: {
+ *         id: string
+ *     }
+ * }
+ */
+export const PARTICIPANT_STOPPED_SCREEN_SHARE = 'PARTICIPANT_STOPPED_SCREEN_SHARE';
+
+/**
  * Action to handle case when info about participant changes.
  *
  * {
@@ -131,6 +143,7 @@ export const PARTICIPANT_UPDATED = 'PARTICIPANT_UPDATED';
  *     type: PIN_PARTICIPANT,
  *     participant: {
  *         id: string
+ *          videoType: string
  *     }
  * }
  */

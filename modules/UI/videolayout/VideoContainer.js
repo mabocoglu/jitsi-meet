@@ -5,6 +5,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 import { browser } from '../../../react/features/base/lib-jitsi-meet';
+import { VIDEO_TYPE } from '../../../react/features/base/media';
 import { ORIENTATION, LargeVideoBackground } from '../../../react/features/large-video';
 import { LAYOUTS, getCurrentLayout } from '../../../react/features/video-layout';
 /* eslint-enable no-unused-vars */
@@ -459,8 +460,14 @@ export class VideoContainer extends LargeContainer {
      * @param {JitsiTrack?} stream new stream
      * @param {string} videoType video type
      */
-    setStream(userID, stream, videoType) {
-        this.userId = userID;
+    setStream(userID, stream, videoType = VIDEO_TYPE.CAMERA) {
+
+        if (!userID) {
+            this.userId = userID;
+        } else {
+            this.userId = userID.includes("_") ? userID : userID + "_" + videoType;
+        }
+
         if (this.stream === stream) {
             // Handles the use case for the remote participants when the
             // videoType is received with delay after turning on/off the

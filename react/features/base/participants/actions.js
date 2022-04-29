@@ -12,6 +12,7 @@ import {
     PARTICIPANT_JOINED,
     PARTICIPANT_KICKED,
     PARTICIPANT_LEFT,
+    PARTICIPANT_STOPPED_SCREEN_SHARE,
     PARTICIPANT_UPDATED,
     PIN_PARTICIPANT,
     SET_LOADABLE_AVATAR_URL
@@ -215,12 +216,13 @@ export function muteRemoteParticipant(id) {
  *     }
  * }}
  */
-export function participantConnectionStatusChanged(id, connectionStatus) {
+export function participantConnectionStatusChanged(id, connectionStatus, videoType) {
     return {
         type: PARTICIPANT_UPDATED,
         participant: {
             connectionStatus,
-            id
+            id,
+            videoType
         }
     };
 }
@@ -333,6 +335,32 @@ export function participantLeft(id, conference) {
         }
     };
 }
+
+/**
+ * Action to signal that a participant has stopped screen share.
+ *
+ * @param {string} id - Participant's ID.
+ * @param {JitsiConference} conference - The {@code JitsiConference} associated
+ * with the participant identified by the specified {@code id}. Only the local
+ * participant is allowed to not specify an associated {@code JitsiConference}
+ * instance.
+ * @returns {{
+    *     type: PARTICIPANT_STOPPED_SCREEN_SHARE,
+    *     participant: {
+    *         conference: JitsiConference,
+    *         id: string
+    *     }
+    * }}
+    */
+   export function participantStoppedScreenShare(id, conference) {
+       return {
+           type: PARTICIPANT_STOPPED_SCREEN_SHARE,
+           participant: {
+               conference,
+               id
+           }
+       };
+   }
 
 /**
  * Action to signal that a participant's presence status has changed.
@@ -460,15 +488,17 @@ export function participantKicked(kicker, kicked) {
  * @returns {{
  *     type: PIN_PARTICIPANT,
  *     participant: {
- *         id: string
+ *         id: string,
+ *         videoType: string
  *     }
  * }}
  */
-export function pinParticipant(id) {
+export function pinParticipant(id, videoType = 'camera') {
     return {
         type: PIN_PARTICIPANT,
         participant: {
-            id
+            id,
+            videoType
         }
     };
 }

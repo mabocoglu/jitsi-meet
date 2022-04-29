@@ -110,10 +110,13 @@ ReducerRegistry.register('features/base/tracks', (state = [], action) => {
     case TRACK_ADDED: {
         let withoutTrackStub = state;
 
+        // Check only media type if it is audio. No need to check video type for audio media
         if (action.track.local) {
             withoutTrackStub
                 = state.filter(
-                    t => !t.local || t.mediaType !== action.track.mediaType);
+                    t => !t.local 
+                    || (t.mediaType === 'audio' && t.mediaType !== action.track.mediaType) 
+                    || (t.mediaType === 'video' && (t.mediaType !== action.track.mediaType || t.videoType !== action.track.videoType)));
         }
 
         return [ ...withoutTrackStub, action.track ];

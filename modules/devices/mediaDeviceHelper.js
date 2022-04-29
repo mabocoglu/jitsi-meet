@@ -142,7 +142,7 @@ export default {
             localAudio) {
         return {
             audioinput: getNewAudioInputDevice(newDevices, localAudio),
-            videoinput: isSharingScreen ? undefined : getNewVideoInputDevice(newDevices, localVideo),
+            videoinput: isSharingScreen ? undefined : getNewVideoInputDevice(newDevices, localVideo), 
             audiooutput: getNewAudioOutputDevice(newDevices)
         };
     },
@@ -222,6 +222,24 @@ export default {
             return (
                 createLocalTracks({
                     devices: [ 'video' ],
+                    cameraDeviceId,
+                    micDeviceId: null
+                })
+                .catch(err => {
+                    videoTrackError = err;
+                    showError && APP.store.dispatch(notifyCameraError(err));
+
+                    return [];
+                }));
+        }
+
+        /**
+         *
+         */
+         function createVideoDesktopTrack(showError = true) {
+            return (
+                createLocalTracks({
+                    devices: [ 'desktop' ],
                     cameraDeviceId,
                     micDeviceId: null
                 })

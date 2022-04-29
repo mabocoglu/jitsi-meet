@@ -125,6 +125,7 @@ export default class AlwaysOnTop extends Component<*, State> {
      */
     _largeVideoChangedListener() {
         const userID = api._getOnStageParticipant();
+        const userVideoType = api._getOnStageParticipantVideoType();
         const avatarURL = api.getAvatarURL(userID);
         const displayName = api.getDisplayName(userID);
         const formattedDisplayName = api._getFormattedDisplayName(userID);
@@ -135,7 +136,8 @@ export default class AlwaysOnTop extends Component<*, State> {
             displayName,
             formattedDisplayName,
             isVideoDisplayed,
-            userID
+            userID,
+            userVideoType
         });
     }
 

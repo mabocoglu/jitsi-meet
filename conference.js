@@ -30,6 +30,7 @@ import {
     authStatusChanged,
     commonUserJoinedHandling,
     commonUserLeftHandling,
+    commonUserStoppedScreenSharingHandling,
     conferenceFailed,
     conferenceJoined,
     conferenceLeft,
@@ -43,7 +44,8 @@ import {
     onStartMutedPolicyChanged,
     p2pStatusChanged,
     sendLocalParticipant,
-    setDesktopSharingEnabled
+    setDesktopSharingEnabled,
+    addTrialToken,
 } from './react/features/base/conference';
 import {
     checkAndNotifyForNewDevice,
@@ -71,10 +73,13 @@ import {
     setAudioAvailable,
     setAudioMuted,
     setVideoAvailable,
-    setVideoMuted
+    setVideoMuted,
+    VIDEO_TYPE
 } from './react/features/base/media';
 import {
     dominantSpeakerChanged,
+    isParticipantModerator,
+    isLocalParticipantModerator,
     getLocalParticipant,
     getNormalizedDisplayName,
     getParticipantById,
@@ -95,12 +100,15 @@ import {
     createLocalPresenterTrack,
     createLocalTracksF,
     destroyLocalTracks,
+    destroyRemoteTracks,
     getLocalJitsiAudioTrack,
     getLocalJitsiVideoTrack,
     isLocalVideoTrackMuted,
     isLocalTrackMuted,
     isUserInteractionRequiredForUnmute,
+    addLocalTrack,
     replaceLocalTrack,
+    removeLocalTrack,
     trackAdded,
     trackRemoved
 } from './react/features/base/tracks';
@@ -129,6 +137,12 @@ import { endpointMessageReceived } from './react/features/subtitles';
 import UIEvents from './service/UI/UIEvents';
 import * as RemoteControlEvents
     from './service/remotecontrol/RemoteControlEvents';
+
+import { openSettingsDialog } from './react/features/settings/actions';
+import { SETTINGS_TABS } from './react/features/settings/constants';
+import {
+    PARTICIPANT_ROLE
+} from './react/features/base/participants/constants';
 
 const logger = Logger.getLogger(__filename);
 
@@ -161,7 +175,16 @@ let _prevMutePresenterVideo = Promise.resolve();
  */
 window.JitsiMeetScreenObtainer = {
     openDesktopPicker(options, onSourceChoose) {
-        APP.store.dispatch(showDesktopPicker(options, onSourceChoose));
+        // TODO : participatn al ve ismoderator set et;
+        const localParticipant = getLocalParticipant(APP.store.getState());
+        const isModerator = true; // TODO: mabocoglu: Sonrasında bu şekilde olacak; const isModerator = isParticipantModerator(localParticipant);
+
+        var modifiedOptions = {
+            ...options,
+            isModerator
+        }
+
+        APP.store.dispatch(showDesktopPicker(modifiedOptions, onSourceChoose));
     }
 };
 
@@ -195,6 +218,23 @@ function connect(roomName) {
         }
         throw err;
     });
+}
+
+
+
+/**
+ * Konferansa bağlanıldığında bu metot çalışacak.
+ */
+function konferansaBaglandi() {
+    console.log('***### Konferansa bağlandı');
+
+    // APP.store.dispatch(destroyRemoteTracks());
+
+    // mabocoglu: Açılışta yalnızca avukatlara kamera ayar ekranı çıkacak.
+    if (!isLocalParticipantModerator(APP.store.getState())) {
+        // console.log("***### Moderatör olmadığı için ayarlar ekranı gösteriliyor...");
+        APP.store.dispatch(openSettingsDialog(SETTINGS_TABS.DEVICES));
+    }
 }
 
 /**
@@ -475,6 +515,14 @@ export default {
     localVideo: null,
 
     /**
+     * The local video track (if any).
+     * FIXME tracks from redux store should be the single source of truth, but
+     * more refactoring is required around screen sharing ('localVideo' usages).
+     * @type {JitsiLocalTrack|null}
+     */
+    localVideoDesktop: null,
+
+    /**
      * Returns an object containing a promise which resolves with the created tracks &
      * the errors resulting from that process.
      *
@@ -493,6 +541,12 @@ export default {
         if (options.startWithAudioMuted) {
             this.muteAudio(true, true);
         }
+
+        // mabocoglu: Hem kamera hem de paylaşım gönderilsin diye eklendi ama yalnızca biri gidiyor.
+        // debugger;
+        // if (JitsiMeetJS.isDesktopSharingEnabled()) {
+        //     initialDevices.push('desktop');
+        // }
 
         if (!options.startWithVideoMuted
                 && !options.startAudioOnly
@@ -571,12 +625,14 @@ export default {
                     }
                     errors.audioOnlyError = err;
 
+                    // debugger;
                     // Try video only...
                     return requestedVideo
                         ? createLocalTracksF({ devices: [ 'video' ] }, true)
                         : [];
                 })
                 .catch(err => {
+                    // debugger;
                     // Log this just in case...
                     if (!requestedVideo) {
                         logger.error('The impossible just happened', err);
@@ -662,6 +718,8 @@ export default {
     },
 
     startConference(con, tracks) {
+        Logger.setLogLevelById(Logger.levels.TRACE, __filename);
+
         tracks.forEach(track => {
             if ((track.isAudioTrack() && this.isLocalAudioMuted())
                 || (track.isVideoTrack() && this.isLocalVideoMuted())) {
@@ -742,6 +800,14 @@ export default {
 
         this.roomName = roomName;
 
+        addTrialToken("Au3LNGLX/njX3LDKa+GbbLvEFxLNhFu5GnhkNBewmgOtCPURVmv2P62DAj0oknntThhpPg7xQ3vPQAAbYCfTfgsAAACDeyJvcmlnaW4iOiJodHRwczovL2VkdXJ1c21hLmFkYWxldC5nb3YudHI6NDQzIiwiZmVhdHVyZSI6IlJUQ0V4dGVuZERlYWRsaW5lRm9yUGxhbkJSZW1vdmFsIiwiZXhwaXJ5IjoxNjUzNDM2Nzk5LCJpc1N1YmRvbWFpbiI6dHJ1ZX0=");
+        
+        // Aşağıdaki tokenlar yerel geliştirmeler için kullanılmaktadır.
+        // localhost:443
+        // addTrialToken("ApnvIIzVXhvl59MMfFrqYh5W4ld3qXq2xxc4JNAsXKuQW1DlmQzkzEvn7t2d2SC3vw7oBO8Q1k2gHUdjxrnudwcAAABjeyJvcmlnaW4iOiJodHRwczovL2xvY2FsaG9zdDo0NDMiLCJmZWF0dXJlIjoiUlRDRXh0ZW5kRGVhZGxpbmVGb3JQbGFuQlJlbW92YWwiLCJleHBpcnkiOjE2NTM0MzY3OTl9");
+        // localhost:9000
+        //addTrialToken("AnnVxCn849ZRh3eujNX3pd6w0JnnSeU7OAv+ne09tcLrHcPYdMqs6V2wxKhlmvcfu0qhtufpfB53qnVskmvd/AoAAABkeyJvcmlnaW4iOiJodHRwczovL2xvY2FsaG9zdDo5MDAwIiwiZmVhdHVyZSI6IlJUQ0V4dGVuZERlYWRsaW5lRm9yUGxhbkJSZW1vdmFsIiwiZXhwaXJ5IjoxNjUzNDM2Nzk5fQ==");
+        
         try {
             // Initialize the device list first. This way, when creating tracks
             // based on preferred devices, loose label matching can be done in
@@ -922,6 +988,7 @@ export default {
      * dialogs in case of media permissions error.
      */
     muteVideo(mute, showUI = true) {
+        // debugger;
         if (!mute
                 && isUserInteractionRequiredForUnmute(APP.store.getState())) {
             logger.error('Unmuting video requires user interaction');
@@ -929,12 +996,13 @@ export default {
             return;
         }
 
-        if (this.isSharingScreen) {
+        // if (this.isSharingScreen) {
             // Chain _mutePresenterVideo calls
-            _prevMutePresenterVideo = _prevMutePresenterVideo.then(() => this._mutePresenterVideo(mute));
+            // TODO: presenter effect istemiyoruz. Bu config olarak da tanımlanabilir.
+            // _prevMutePresenterVideo = _prevMutePresenterVideo.then(() => this._mutePresenterVideo(mute));
 
-            return;
-        }
+        //     return;
+        // }
 
         // If not ready to modify track's state yet adjust the base/media
         if (!this._localTracksInitialized) {
@@ -971,7 +1039,7 @@ export default {
                     // Rollback the video muted status by using null track
                     return null;
                 })
-                .then(videoTrack => this.useVideoStream(videoTrack));
+                .then(videoTrack => this.useVideoStream(videoTrack, videoTrack.videoType)); // TODO: Burada videoType elle verilmesi gerekebilir.
         } else {
             // FIXME show error dialog if it fails (should be handled by react)
             muteLocalVideo(mute);
@@ -1304,7 +1372,7 @@ export default {
             if (track.isAudioTrack()) {
                 return this.useAudioStream(track);
             } else if (track.isVideoTrack()) {
-                return this.useVideoStream(track);
+                return this.useVideoStream(track, track.videoType);
             }
             logger.error(
                     'Ignored not an audio nor a video track: ', track);
@@ -1324,36 +1392,88 @@ export default {
      * @param {JitsiLocalTrack} newTrack - new track to use or null
      * @returns {Promise}
      */
-    useVideoStream(newTrack) {
+    useVideoStream(newTrack, videoType) {
         return new Promise((resolve, reject) => {
-            _replaceLocalVideoTrackQueue.enqueue(onFinish => {
-                const state = APP.store.getState();
 
-                // When the prejoin page is displayed localVideo is not set
-                // so just replace the video track from the store with the new one.
-                if (isPrejoinPageVisible(state)) {
-                    const oldTrack = getLocalJitsiVideoTrack(state);
+            // TODO: Ekran paylaşımında burası iptal ediliyor. Bunun yerine ek bir local track yaratırsak, sorun düzelebilir.
+            // mabocoglu: Masaüstü video akışı geldiğinde replace _replaceLocalVideoTrackQueue kullanmaya gerek olmadığını düşünüyorum.
+            if (videoType === 'desktop') { // null olması durumunda replace track kullanılsın istiyoruz.
+                // mabocoglu: Bu if kısmı kaldırılacak.
+                
+                if (newTrack) {
+                    
+                    APP.store.dispatch(
+                        addLocalTrack(newTrack, room))
+                        .then(() => {
 
-                    return APP.store.dispatch(replaceLocalTrack(oldTrack, newTrack))
+                            // local track'lere bunu da ekliyoruz.
+
+                            // addLocalTrack(this.localVideo, room);
+
+                            this.localVideoDesktop = newTrack;
+                            // mabocoglu: Aşağıdaki kod herşeyi bozuyor sanki. Diğer videoyu local'den kaldırıyor olabilir.
+                            this._setSharingScreen(newTrack);
+                            if (newTrack) {
+                                // APP.UI.addLocalVideoStream(this.localVideo); // Tekrar eklemeye gerek var mı bilmiyorum.
+                                APP.UI.addLocalVideoStream(newTrack); // Eski video görüntüsünü de ekliyoruz. BURADA-KALDIM
+                            }
+                        })
                         .then(resolve)
-                        .catch(reject)
-                        .then(onFinish);
+                        .catch(error => {
+                            logger.error('failed to add desktop video', error);
+                        });
+
+                } else { // Eğer null gelmişse, replace metodunu kullanıyoruz.
+                    _replaceLocalVideoTrackQueue.enqueue(onFinish => {
+    
+                        // console.log("***### desktop stream kaldırılıyor...");
+                        APP.store.dispatch(
+                            replaceLocalTrack(this.localVideoDesktop, newTrack, room))
+                                .then(() => {
+
+                                    // TODO: mabocoglu: Buraya unit test olarak newTrack null değilse hata verilmeli!
+                                    this.localVideoDesktop = newTrack;
+                                    this._setSharingScreen(newTrack);
+                                })
+                                .then(resolve)
+                                .catch(reject)
+                                .then(onFinish);
+                    });
                 }
 
-                APP.store.dispatch(
-                replaceLocalTrack(this.localVideo, newTrack, room))
-                    .then(() => {
-                        this.localVideo = newTrack;
-                        this._setSharingScreen(newTrack);
-                        if (newTrack) {
-                            APP.UI.addLocalVideoStream(newTrack);
-                        }
-                        this.setVideoMuteStatus(this.isLocalVideoMuted());
-                    })
-                    .then(resolve)
-                    .catch(reject)
-                    .then(onFinish);
-            });
+            } else {
+
+                _replaceLocalVideoTrackQueue.enqueue(onFinish => {
+                    const state = APP.store.getState();
+    
+                    // When the prejoin page is displayed localVideo is not set
+                    // so just replace the video track from the store with the new one.
+                    // mabocoglu: Şu an için prejoin kullanmıyoruz.
+                    if (isPrejoinPageVisible(state)) {
+                        const oldTrack = getLocalJitsiVideoTrack(state, 'camera');
+    
+                        return APP.store.dispatch(replaceLocalTrack(oldTrack, newTrack))
+                            .then(resolve)
+                            .catch(reject)
+                            .then(onFinish);
+                    }
+
+                    APP.store.dispatch(
+                        replaceLocalTrack(this.localVideo, newTrack, room))
+                            .then(() => {
+                                this.localVideo = newTrack;
+                                this._setSharingScreen(newTrack);
+                                if (newTrack) {
+                                    APP.UI.addLocalVideoStream(newTrack);
+                                }
+                                this.setVideoMuteStatus(this.isLocalVideoMuted());
+                            })
+                            .then(resolve)
+                            .catch(reject)
+                            .then(onFinish);
+                });
+
+            }
         });
     },
 
@@ -1459,6 +1579,10 @@ export default {
     async _turnScreenSharingOff(didHaveVideo) {
         this._untoggleScreenSharing = null;
         this.videoSwitchInProgress = true;
+        // console.log("***### Screenshare sonlandırıldı.");
+
+        // debugger;
+
         const { receiver } = APP.remoteControl;
 
         if (receiver) {
@@ -1467,23 +1591,23 @@ export default {
 
         this._stopProxyConnection();
         if (config.enableScreenshotCapture) {
-            APP.store.dispatch(toggleScreenshotCaptureEffect(false));
+            // APP.store.dispatch(toggleScreenshotCaptureEffect(false));
         }
 
         // It can happen that presenter GUM is in progress while screensharing is being turned off. Here it needs to
         // wait for that GUM to be resolved in order to prevent leaking the presenter track(this.localPresenterVideo
         // will be null when SS is being turned off, but it will initialize once GUM resolves).
-        let promise = _prevMutePresenterVideo = _prevMutePresenterVideo.then(() => {
+        // let promise = _prevMutePresenterVideo = _prevMutePresenterVideo.then(() => {
             // mute the presenter track if it exists.
-            if (this.localPresenterVideo) {
-                APP.store.dispatch(setVideoMuted(true, MEDIA_TYPE.PRESENTER));
+            // if (this.localPresenterVideo) {
+            //     APP.store.dispatch(setVideoMuted(true, MEDIA_TYPE.PRESENTER));
 
-                return this.localPresenterVideo.dispose().then(() => {
-                    APP.store.dispatch(trackRemoved(this.localPresenterVideo));
-                    this.localPresenterVideo = null;
-                });
-            }
-        });
+            //     return this.localPresenterVideo.dispose().then(() => {
+            //         APP.store.dispatch(trackRemoved(this.localPresenterVideo));
+            //         this.localPresenterVideo = null;
+            //     });
+            // }
+        // });
 
         // If system audio was also shared stop the AudioMixerEffect and dispose of the desktop audio track.
         if (this._mixerEffect) {
@@ -1499,30 +1623,93 @@ export default {
             this._desktopAudioStream = undefined;
         }
 
-        if (didHaveVideo) {
-            promise = promise.then(() => createLocalTracksF({ devices: [ 'video' ] }))
-                .then(([ stream ]) => this.useVideoStream(stream))
-                .catch(error => {
-                    logger.error('failed to switch back to local video', error);
+        // Eğer videoya dönüş yapmadan direkt masaüstü track'i kapatırsak elimizde localtrack kalmıyor. Nedenine bakmak lazım.
+        // if (didHaveVideo) {
+        //     promise = promise.then(() => createLocalTracksF({ devices: [ 'video' ] }))
+        //         .then(([ stream ]) => this.useVideoStream(stream, stream.videoType))
+        //         .catch(error => {
+        //             logger.error('failed to switch back to local video', error);
 
-                    return this.useVideoStream(null).then(() =>
+        //             return this.useVideoStream(null, 'desktop').then(() =>
 
-                        // Still fail with the original err
-                        Promise.reject(error)
-                    );
-                });
-        } else {
-            promise = promise.then(() => this.useVideoStream(null));
-        }
+        //                 // Still fail with the original err
+        //                 Promise.reject(error)
+        //             );
+        //         });
+        // } else {
+        //     promise = promise.then(() => this.useVideoStream(null, 'desktop'));
+        // }
+
+        let promise = this.useVideoStream(null, 'desktop');
+
+        // mabocoglu: Masaüstü akışını durduruyoruz.
+        // promise = promise.then(() => {
+
+        //     APP.store.dispatch(
+        //         replaceLocalTrack(this.localVideoDesktop, null, room))
+        //             .then(() => {
+        //                 this.localVideoDesktop = null;
+        //                 this.setAudioMuteStatus(this.isLocalAudioMuted());
+
+        //                 APP.UI.removeLocalVideoDesktop();
+        //                 this.videoSwitchInProgress = false;
+        //                 sendAnalytics(createScreenSharingEvent('stopped'));
+        //                 logger.info('Screen sharing stopped.');
+        //             });
+
+        //     // debugger;
+        //     // APP.store.dispatch(
+        //     //     //replaceLocalTrack(this.localVideoDesktop, null, room))
+        //     //     replaceLocalTrack(this.localVideo, null, room))
+        //     //     .then(() => {
+                    
+        //     //         this.localVideo = null;
+        //     //         // this.isSharingScreen = false;
+
+        //     //         // this._setSharingScreen(newTrack);
+        //     //         // if (newTrack) {
+        //     //         //     APP.UI.addLocalVideoStream(newTrack);
+        //     //         // }
+        //     //         // this.setVideoMuteStatus(this.isLocalVideoMuted());
+        //     //     });
+
+        //     // this.useVideoStream(null, 'desktop')
+        // });
+
+        
+
+        // Direk paylaşımı nulluyoruz.
+        // promise = promise.then(() => this.useVideoStream(null, 'desktop'));
+
+        // TODO: Paylaşım sonlandırıldığında karşı taraftaki iki video kutusu kararıyor ama içleri karanlık kalıyor.
+        // promise = promise.then(() => {
+        //     APP.store.dispatch(removeLocalTrack(this.localVideoDesktop, room))
+        //         .then(() => {
+        //             // console.log("***### Local Track kaldırıldı: Local Track: ", this.localVideoDesktop);
+        //             this.localVideoDesktop = null;
+        //             this._setSharingScreen(this.localVideoDesktop);
+        //             APP.UI.removeLocalVideoDesktop();
+        //         })
+        //         .catch(error => {
+        //             this.localVideoDesktop = null;
+        //             logger.error('Track kaldırılırken hata oluştu.', error);
+        //             // console.log("***### Hata oluştu: ", error);
+        //             APP.UI.removeLocalVideoDesktop();
+
+        //             throw error;
+        //         });
+        // });
 
         return promise.then(
             () => {
+                APP.UI.removeLocalVideoDesktop();
                 this.videoSwitchInProgress = false;
                 sendAnalytics(createScreenSharingEvent('stopped'));
                 logger.info('Screen sharing stopped.');
             },
             error => {
                 this.videoSwitchInProgress = false;
+                        
                 throw error;
             });
     },
@@ -1543,6 +1730,8 @@ export default {
      * @return {Promise.<T>}
      */
     async toggleScreenSharing(toggle = !this._untoggleScreenSharing, options = {}) {
+        // console.log("***### toggleScreenSharing çalıştı. options: ", options);
+
         if (this.videoSwitchInProgress) {
             return Promise.reject('Switch in progress.');
         }
@@ -1589,6 +1778,12 @@ export default {
     _createDesktopTrack(options = {}) {
         const didHaveVideo = !this.isLocalVideoMuted();
 
+        // TODO: mabocoglu: Ekran paylaşım kısımlarında yalnızca window verilebilir; config : desktopSharingSources
+        
+        const tracks = APP.store.getState()['features/base/tracks'];
+
+        // console.log("***### _createDesktopTrack metodu tetiklendi. Ekleme öncesi tracks: ", tracks);
+
         const getDesktopStreamPromise = options.desktopStream
             ? Promise.resolve([ options.desktopStream ])
             : createLocalTracksF({
@@ -1597,12 +1792,29 @@ export default {
                 desktopSharingSources: options.desktopSharingSources,
                 devices: [ 'desktop' ]
             });
+        
+        // mabocoglu: Masaüstü'nün yanında kamera görüntüsünü göndermek için kullanıldı. Fakat bir etkisi görülmedi.
+        // const getDesktopStreamPromise = createLocalTracksF({
+        //     desktopSharingSourceDevice: options.desktopSharingSources
+        //         ? null : config._desktopSharingSourceDevice,
+        //     desktopSharingSources: options.desktopSharingSources,
+        //     devices: [ 'desktop', 'video' ]
+        // });
+
+        // // console.log("***### Desktop ve video paylaşımı başlatıldı");
 
         return getDesktopStreamPromise.then(desktopStreams => {
+
+            const tracks = APP.store.getState()['features/base/tracks'];
+
+            // console.log("***### _createDesktopTrack metodu tetiklendi. Ekleme sonrası tracks: ", tracks);
+
             // Stores the "untoggle" handler which remembers whether was
             // there any video before and whether was it muted.
-            this._untoggleScreenSharing
-                = this._turnScreenSharingOff.bind(this, didHaveVideo);
+            // mabocoglu: Paylaşım sonlandırıldıktan sonra bu metot tetikleniyor.
+            this._untoggleScreenSharing = this._turnScreenSharingOff.bind(this, didHaveVideo);
+
+            // // console.log("***### Paylaşım sözü yerine getirildi");
 
             const desktopVideoStream = desktopStreams.find(stream => stream.getType() === MEDIA_TYPE.VIDEO);
 
@@ -1610,6 +1822,8 @@ export default {
                 desktopVideoStream.on(
                     JitsiTrackEvents.LOCAL_TRACK_STOPPED,
                     () => {
+                        console.log(`***### Ekran paylaşımı sonlandırıldı. _turnScreenSharingOff metodu tetikleniyor. didHaveVideo: ${didHaveVideo}`);
+                        
                         // If the stream was stopped during screen sharing
                         // session then we should switch back to video.
                         this.isSharingScreen
@@ -1637,6 +1851,8 @@ export default {
      * {@link JitsiStreamPresenterEffect} if it succeeds.
      */
     async _createPresenterStreamEffect(height = null, cameraDeviceId = null) {
+        // console.log("***### _createPresenterStreamEffect Presenter video başlatılıyor...");
+
         if (!this.localPresenterVideo) {
             try {
                 this.localPresenterVideo = await createLocalPresenterTrack({ cameraDeviceId }, height);
@@ -1668,6 +1884,8 @@ export default {
         const maybeShowErrorDialog = error => {
             APP.store.dispatch(notifyCameraError(error));
         };
+
+        // console.log("***### _mutePresenterVideo metodu çalıştı.");
 
         // Check for NO-OP
         if (mute && (!this.localPresenterVideo || this.localPresenterVideo.isMuted())) {
@@ -1713,13 +1931,13 @@ export default {
             }
             if (resizeDesktopStream) {
                 try {
-                    await this.localVideo.track.applyConstraints(desktopResizeConstraints);
+                    await this.localVideoDesktop.track.applyConstraints(desktopResizeConstraints);
                 } catch (err) {
                     logger.error('Failed to apply constraints on the desktop stream for presenter mode', err);
 
                     return;
                 }
-                height = this.localVideo.track.getSettings().height ?? DESKTOP_STREAM_CAP;
+                height = this.localVideoDesktop.track.getSettings().height ?? DESKTOP_STREAM_CAP;
             }
             const defaultCamera = getUserSelectedCameraDeviceId(APP.store.getState());
             let effect;
@@ -1759,23 +1977,36 @@ export default {
      * @private
      */
     _switchToScreenSharing(options = {}) {
+
+        // console.log("***### _switchToScreenSharing çalıştı.");
+
         if (this.videoSwitchInProgress) {
             return Promise.reject('Switch in progress.');
         }
 
         this.videoSwitchInProgress = true;
 
+        // mabocoglu: Ekran paylaşım track'inin yapıldığı yer burası
         return this._createDesktopTrack(options)
             .then(async streams => {
                 const desktopVideoStream = streams.find(stream => stream.getType() === MEDIA_TYPE.VIDEO);
 
+                // console.log(`***### useVideoStream tetikleniyor. streams: `, streams);
+
                 if (desktopVideoStream) {
-                    await this.useVideoStream(desktopVideoStream);
+                    // console.log(`***### useVideoStream tetikleniyor. desktopVideoStream:`,  desktopVideoStream);
+                    // console.log(`***### useVideoStream tetikleniyor. desktopVideoStream.videoType:`,  desktopVideoStream.videoType);
+
+                    // Paylaşım sesini kapatıyoruz.
+                    // console.log(`***### useVideoStream tetikleniyor. desktopVideoStream.muted: `, desktopVideoStream.track.muted);
+                    await this.useVideoStream(desktopVideoStream, desktopVideoStream.videoType);
                 }
 
                 this._desktopAudioStream = streams.find(stream => stream.getType() === MEDIA_TYPE.AUDIO);
 
                 if (this._desktopAudioStream) {
+                    // console.log("***### Audio stream de var.");
+
                     // If there is a localAudio stream, mix in the desktop audio stream captured by the screen sharing
                     // api.
                     if (this.localAudio) {
@@ -1792,6 +2023,8 @@ export default {
             .then(() => {
                 this.videoSwitchInProgress = false;
                 if (config.enableScreenshotCapture) {
+                    // console.log("***### toggleScreenshotCaptureEffect tetikleniyor...");
+
                     APP.store.dispatch(toggleScreenshotCaptureEffect(true));
                 }
                 sendAnalytics(createScreenSharingEvent('started'));
@@ -1865,11 +2098,28 @@ export default {
     /**
      * Setup interaction between conference and UI.
      */
-    _setupListeners() {
+    _setupListeners() {       
         // add local streams when joined to the conference
         room.on(JitsiConferenceEvents.CONFERENCE_JOINED, () => {
             this._onConferenceJoined();
         });
+
+        // room.on(JitsiConferenceEvents.PARTICIPANT_PROPERTY_CHANGED, (participant, propertyName, oldValue, newValue) => {
+
+        //     console.log("***### PARTICIPANT_PROPERTY_CHANGED. propertyName: ", propertyName);
+        //     console.log("***### PARTICIPANT_PROPERTY_CHANGED. oldValue: ", oldValue);
+        //     console.log("***### PARTICIPANT_PROPERTY_CHANGED. newValue: ", newValue);
+
+        //     // if (isAvukatMi(APP.store.getState())) {
+        //     //     // // console.log("***### Moderatör olmadığı için ayarlar ekranı gösteriliyor...");
+        //     //     APP.store.dispatch(openSettingsDialog(SETTINGS_TABS.DEVICES));
+        //     // }
+        //     // console.log("***### Katılımcı özelliği değişti. user: ", user);
+        // });
+
+        // room.on(JitsiConferenceEvents.PARTCIPANT_FEATURES_CHANGED, (user) => {
+        //     console.log("***### Katılımcı özellikleri değişti.  user: ", user);
+        // });
 
         room.on(
             JitsiConferenceEvents.CONFERENCE_LEFT,
@@ -1898,6 +2148,7 @@ export default {
         });
 
         room.on(JitsiConferenceEvents.USER_LEFT, (id, user) => {
+            // debugger; // TODO: Katılımcı ayrıldığında burası tetikleniyor. Aynı şekilde desktop paylaşımı sonlandırıldığında da burası tetiklenecek.
             // The logic shared between RN and web.
             commonUserLeftHandling(APP.store, room, user);
 
@@ -1908,6 +2159,21 @@ export default {
             logger.log(`USER ${id} LEFT:`, user);
 
             APP.UI.onSharedVideoStop(id);
+        });
+
+        room.on(JitsiConferenceEvents.USER_STOPPED_SCREEN_SHARING, (id, user) => {
+            // debugger; // TODO: Katılımcı ayrıldığında burası tetikleniyor. Aynı şekilde desktop paylaşımı sonlandırıldığında da burası tetiklenecek.
+            // The logic shared between RN and web.
+            commonUserStoppedScreenSharingHandling(APP.store, room, user);
+
+            // if (user.isHidden()) {
+            //     return;
+            // }
+
+            // logger.log(`USER ${id} LEFT:`, user);
+
+            // Buraya gerek olmayabilir.
+            // APP.UI.onSharedVideoStop(id);
         });
 
         room.on(JitsiConferenceEvents.USER_STATUS_CHANGED, (id, status) => {
@@ -1922,6 +2188,11 @@ export default {
 
         room.on(JitsiConferenceEvents.USER_ROLE_CHANGED, (id, role) => {
             if (this.isLocalId(id)) {
+                
+                if (role === PARTICIPANT_ROLE.PARTICIPANT) { // mabocoglu: Eğer avukat (participant) rolü almışsa, ekrana ayar penceresi çıkarıyoruz. Bu role bilgisi ile güvenlik gerektiren işler yapılmamalı.
+                    APP.store.dispatch(openSettingsDialog(SETTINGS_TABS.DEVICES));
+                }
+
                 logger.info(`My role changed, new role: ${role}`);
 
                 APP.store.dispatch(localParticipantRoleChanged(role));
@@ -1986,8 +2257,8 @@ export default {
 
         room.on(
             JitsiConferenceEvents.PARTICIPANT_CONN_STATUS_CHANGED,
-            (id, connectionStatus) => APP.store.dispatch(
-                participantConnectionStatusChanged(id, connectionStatus)));
+            (id, connectionStatus, videoType) => APP.store.dispatch(
+                participantConnectionStatusChanged(id, connectionStatus, videoType)));
 
         room.on(
             JitsiConferenceEvents.DOMINANT_SPEAKER_CHANGED,
@@ -2192,44 +2463,50 @@ export default {
             cameraDeviceId => {
                 const videoWasMuted = this.isLocalVideoMuted();
 
+                // console.log("***### Video cihazı değişti!");
+
                 sendAnalytics(createDeviceChangedEvent('video', 'input'));
+
+                // debugger;
 
                 // If both screenshare and video are in progress, restart the
                 // presenter mode with the new camera device.
-                if (this.isSharingScreen && !videoWasMuted) {
-                    const { height } = this.localVideo.track.getSettings();
+                // if (this.isSharingScreen && !videoWasMuted) {
+                //     const { height } = this.localVideo.track.getSettings();
 
-                    // dispose the existing presenter track and create a new
-                    // camera track.
-                    // FIXME JitsiLocalTrack.dispose is async and should be waited for
-                    this.localPresenterVideo && this.localPresenterVideo.dispose();
-                    this.localPresenterVideo = null;
+                //     // console.log("***###Kamera ve desktop açık olduğunda presenger mode açılıyor...");
 
-                    return this._createPresenterStreamEffect(height, cameraDeviceId)
-                        .then(effect => this.localVideo.setEffect(effect))
-                        .then(() => {
-                            this.setVideoMuteStatus(false);
-                            logger.log('switched local video device');
-                            this._updateVideoDeviceId();
-                        })
-                        .catch(err => APP.store.dispatch(notifyCameraError(err)));
+                //     // dispose the existing presenter track and create a new
+                //     // camera track.
+                //     // FIXME JitsiLocalTrack.dispose is async and should be waited for
+                //     this.localPresenterVideo && this.localPresenterVideo.dispose();
+                //     this.localPresenterVideo = null;
 
-                // If screenshare is in progress but video is muted, update the default device
-                // id for video, dispose the existing presenter track and create a new effect
-                // that can be applied on un-mute.
-                } else if (this.isSharingScreen && videoWasMuted) {
-                    logger.log('switched local video device');
-                    const { height } = this.localVideo.track.getSettings();
+                //     return this._createPresenterStreamEffect(height, cameraDeviceId)
+                //         .then(effect => this.localVideo.setEffect(effect))
+                //         .then(() => {
+                //             this.setVideoMuteStatus(false);
+                //             logger.log('switched local video device');
+                //             this._updateVideoDeviceId();
+                //         })
+                //         .catch(err => APP.store.dispatch(notifyCameraError(err)));
 
-                    this._updateVideoDeviceId();
+                // // If screenshare is in progress but video is muted, update the default device
+                // // id for video, dispose the existing presenter track and create a new effect
+                // // that can be applied on un-mute.
+                // } else if (this.isSharingScreen && videoWasMuted) {
+                //     logger.log('switched local video device');
+                //     const { height } = this.localVideo.track.getSettings();
 
-                    // FIXME JitsiLocalTrack.dispose is async and should be waited for
-                    this.localPresenterVideo && this.localPresenterVideo.dispose();
-                    this.localPresenterVideo = null;
-                    this._createPresenterStreamEffect(height, cameraDeviceId);
+                //     this._updateVideoDeviceId();
 
-                // if there is only video, switch to the new camera stream.
-                } else {
+                //     // FIXME JitsiLocalTrack.dispose is async and should be waited for
+                //     this.localPresenterVideo && this.localPresenterVideo.dispose();
+                //     this.localPresenterVideo = null;
+                //     this._createPresenterStreamEffect(height, cameraDeviceId);
+
+                // // if there is only video, switch to the new camera stream.
+                // } else {
                     createLocalTracksF({
                         devices: [ 'video' ],
                         cameraDeviceId,
@@ -2245,13 +2522,13 @@ export default {
 
                         return stream;
                     })
-                    .then(stream => this.useVideoStream(stream))
+                    .then(stream => this.useVideoStream(stream, stream.videoType))
                     .then(() => {
                         logger.log('switched local video device');
                         this._updateVideoDeviceId();
                     })
                     .catch(err => APP.store.dispatch(notifyCameraError(err)));
-                }
+                // }
             }
         );
 
@@ -2350,6 +2627,7 @@ export default {
         APP.UI.addListener(
             UIEvents.UPDATE_SHARED_VIDEO,
             (url, state, time, isMuted, volume) => {
+                // debugger;
                 /* eslint-enable max-params */
                 // send start and stop commands once, and remove any updates
                 // that had left
@@ -2418,6 +2696,7 @@ export default {
         }
 
         this.localVideo = null;
+        this.localVideoDesktop = null;
         this.localAudio = null;
     },
 
@@ -2435,10 +2714,25 @@ export default {
 
         APP.store.dispatch(conferenceJoined(room));
 
-        const displayName
-            = APP.store.getState()['features/base/settings'].displayName;
+        // // console.log("***### State: ", APP.store.getState());
+        // mabocoglu: role: "moderator" jwt içerisinde tanımlanamıyor. 
+        // moderatorluk ilk girene veriliyor. o yüzden admin token'a sahip kişi web'den girince bile ayarlar ekranı çıkabiliyor.
+        // ileride bunun düzeltmesini yapacağız.
+        // bkz. https://community.jitsi.org/t/predifined-roles/14678
+        // bkz. https://community.jitsi.org/t/tokens-or-other-auth-method-configurations/14795/3
+        // if (isAvukatMi(APP.store.getState())) {
+        //     // // console.log("***### Moderatör olmadığı için ayarlar ekranı gösteriliyor...");
+        //     APP.store.dispatch(openSettingsDialog(SETTINGS_TABS.DEVICES));
+        // }
 
-        APP.UI.changeDisplayName('localVideoContainer', displayName);
+        // APP.store.dispatch(destroyRemoteTracks());
+
+        // room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, konferansaBaglandi);
+
+        // const displayName  = APP.store.getState()['features/base/settings'].displayName;
+
+        // burayı açınca üst üste isimler geliyor
+        // APP.UI.changeDisplayName('localVideoContainer', displayName);
     },
 
     /**
@@ -2503,6 +2797,7 @@ export default {
      * @private
      */
     _updateVideoDeviceId() {
+        // debugger;
         if (this.localVideo
             && this.localVideo.videoType === 'camera') {
             APP.store.dispatch(updateSettings({
@@ -2735,6 +3030,7 @@ export default {
         APP.store.dispatch(destroyLocalTracks());
         this._localTracksInitialized = false;
         this.localVideo = null;
+        this.localVideoDesktop = null;
         this.localAudio = null;
 
         // Remove unnecessary event listeners from firing callbacks.
@@ -2900,6 +3196,7 @@ export default {
      * @param nickname {string} the new display name
      */
     changeLocalDisplayName(nickname = '') {
+
         const formattedNickname = getNormalizedDisplayName(nickname);
         const { id, name } = getLocalParticipant(APP.store.getState());
 
@@ -2936,7 +3233,7 @@ export default {
      * track or the source id is not available, undefined will be returned.
      */
     getDesktopSharingSourceId() {
-        return this.localVideo.sourceId;
+        return this.localVideoDesktop.sourceId;
     },
 
     /**
@@ -2948,7 +3245,7 @@ export default {
      * returned.
      */
     getDesktopSharingSourceType() {
-        return this.localVideo.sourceType;
+        return this.localVideoDesktop.sourceType;
     },
 
     /**
@@ -3021,6 +3318,7 @@ export default {
                         return;
                     }
 
+                    // mabocoglu: Ekrandan masaüstü paylaşımı yapılınca buradan tetiklenmiyor.
                     this.toggleScreenSharing(undefined, { desktopStream });
                 }
             });
@@ -3035,6 +3333,8 @@ export default {
      * @param {boolean} muted - New muted status.
      */
     setVideoMuteStatus(muted) {
+        // console.log("***### setVideoMuteStatus çalıştı. muted: ", muted);
+
         APP.UI.setVideoMuted(this.getMyUserId(), muted);
         APP.API.notifyVideoMutedStatusChanged(muted);
     },

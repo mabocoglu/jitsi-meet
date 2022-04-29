@@ -2,7 +2,7 @@
 
 import { translate } from '../../../base/i18n';
 import { IconSwitchCamera } from '../../../base/icons';
-import { MEDIA_TYPE, toggleCameraFacingMode } from '../../../base/media';
+import { MEDIA_TYPE, toggleCameraFacingMode, VIDEO_TYPE } from '../../../base/media';
 import { connect } from '../../../base/redux';
 import { AbstractButton, type AbstractButtonProps } from '../../../base/toolbox/components';
 import { isLocalTrackMuted } from '../../../base/tracks';
@@ -76,7 +76,7 @@ function _mapStateToProps(state): Object {
 
     return {
         _audioOnly: Boolean(audioOnly),
-        _videoMuted: isLocalTrackMuted(tracks, MEDIA_TYPE.VIDEO)
+        _videoMuted: isLocalTrackMuted(tracks, MEDIA_TYPE.VIDEO, VIDEO_TYPE.CAMERA)
     };
 }
 

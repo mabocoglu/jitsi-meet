@@ -6,7 +6,7 @@ import type { Dispatch } from 'redux';
 import { translate } from '../../../base/i18n';
 import { Icon, IconConnectionActive, IconConnectionInactive } from '../../../base/icons';
 import { JitsiParticipantConnectionStatus } from '../../../base/lib-jitsi-meet';
-import { MEDIA_TYPE } from '../../../base/media';
+import { MEDIA_TYPE, VIDEO_TYPE } from '../../../base/media';
 import { Popover } from '../../../base/popover';
 import { connect } from '../../../base/redux';
 import { getTrackByMediaTypeAndParticipant } from '../../../base/tracks';
@@ -114,6 +114,11 @@ type Props = AbstractProps & {
      * The video SSRC of this client.
      */
     videoSsrc: number,
+
+    /**
+     * The video SSRC of this client.
+     */
+    desktopSsrc: number,
 
     /**
      * Invoked to save the conference logs.
@@ -397,7 +402,8 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
                 serverRegion = { serverRegion }
                 shouldShowMore = { this.state.showMoreStats }
                 transport = { transport }
-                videoSsrc = { this.props.videoSsrc } />
+                videoSsrc = { this.props.videoSsrc }
+                desktopSsrc = { this.props.desktopSsrc } />
         );
     }
 }
@@ -439,13 +445,16 @@ export function _mapStateToProps(state: Object, ownProps: Props) {
 
     if (conference) {
         const firstVideoTrack = getTrackByMediaTypeAndParticipant(
-            state['features/base/tracks'], MEDIA_TYPE.VIDEO, ownProps.participantId);
+            state['features/base/tracks'], MEDIA_TYPE.VIDEO, ownProps.participantId, VIDEO_TYPE.CAMERA);
+        const firstVideoDesktopTrack = getTrackByMediaTypeAndParticipant(
+                state['features/base/tracks'], MEDIA_TYPE.VIDEO, ownProps.participantId, VIDEO_TYPE.DESKTOP);
         const firstAudioTrack = getTrackByMediaTypeAndParticipant(
             state['features/base/tracks'], MEDIA_TYPE.AUDIO, ownProps.participantId);
 
         return {
             audioSsrc: firstAudioTrack ? conference.getSsrcByTrack(firstAudioTrack.jitsiTrack) : undefined,
-            videoSsrc: firstVideoTrack ? conference.getSsrcByTrack(firstVideoTrack.jitsiTrack) : undefined
+            videoSsrc: firstVideoTrack ? conference.getSsrcByTrack(firstVideoTrack.jitsiTrack) : undefined,
+            desktopSsrc: firstVideoDesktopTrack ? conference.getSsrcByTrack(firstVideoDesktopTrack.jitsiTrack) : undefined
         };
     }
 

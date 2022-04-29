@@ -68,7 +68,8 @@ StateListenerRegistry.register(
             store.dispatch(
                 setParticipantsWithScreenShare(newScreenSharesOrder));
 
-            _updateAutoPinnedParticipant(store);
+            // Due to the flipping the same participant when a desktrop track arrived, I had to remove this method call
+            // _updateAutoPinnedParticipant(store);
         }
     }, 100));
 

@@ -27,6 +27,9 @@ import {
     resizeLargeVideo,
     selectParticipantInLargeVideo
 } from '../../react/features/large-video/actions';
+import {
+    getLargeVideoParticipantId
+} from '../../react/features/large-video/functions';
 import { toggleLobbyMode } from '../../react/features/lobby/actions.web';
 import { RECORDING_TYPES } from '../../react/features/recording/constants';
 import { getActiveSession } from '../../react/features/recording/functions';
@@ -398,6 +401,9 @@ function initCommands() {
         }
         case 'is-audio-muted':
             callback(APP.conference.isLocalAudioMuted());
+            break;
+        case 'get-large-video-participant':
+            callback(getLargeVideoParticipantId(APP.store.getState()));
             break;
         case 'is-video-muted':
             callback(APP.conference.isLocalVideoMuted());

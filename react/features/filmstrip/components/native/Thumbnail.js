@@ -77,6 +77,11 @@ type Props = {
     _videoTrack: Object,
 
     /**
+     * The Redux representation of the participant's video track type.
+     */
+    videoType: Object,
+
+    /**
      * If true, there will be no color overlay (tint) on the thumbnail
      * indicating the participant associated with the thumbnail is displayed on
      * large video. By default there will be a tint.
@@ -125,6 +130,7 @@ function Thumbnail(props: Props) {
         _renderModeratorIndicator: renderModeratorIndicator,
         _styles,
         _videoTrack: videoTrack,
+        videoType,
         disableTint,
         participant,
         renderDisplayName,
@@ -133,7 +139,7 @@ function Thumbnail(props: Props) {
 
     const participantId = participant.id;
     const participantInLargeVideo
-        = participantId === largeVideo.participantId;
+        = participantId === largeVideo.participantId && ((!largeVideo.videoType && videoType === 'camera') || largeVideo.videoType === videoType); // TODO: check if largeVideo.pinnedVideoType exist!
     const videoMuted = !videoTrack || videoTrack.muted;
     const isScreenShare = videoTrack && videoTrack.videoType === VIDEO_TYPE.DESKTOP;
 
@@ -143,7 +149,7 @@ function Thumbnail(props: Props) {
             onLongPress = { participant.local ? undefined : _onShowRemoteVideoMenu }
             style = { [
                 styles.thumbnail,
-                participant.pinned && !tileView
+                participant.pinned && ((!participant.pinnedVideoType && videoType === 'camera') || participant.pinnedVideoType === videoType) && !tileView
                     ? _styles.thumbnailPinned : null,
                 props.styleOverrides || null
             ] }
@@ -151,8 +157,9 @@ function Thumbnail(props: Props) {
 
             <ParticipantView
                 avatarSize = { tileView ? AVATAR_SIZE * 1.5 : AVATAR_SIZE }
-                disableVideo = { isScreenShare || participant.isFakeParticipant }
+                disableVideo = { participant.isFakeParticipant } // even it is screenshare, it should be visible
                 participantId = { participantId }
+                videoType = { videoType }
                 style = { _styles.participantViewStyle }
                 tintEnabled = { participantInLargeVideo && !disableTint }
                 tintStyle = { _styles.activeThumbnailTint }
@@ -216,12 +223,12 @@ function _mapDispatchToProps(dispatch: Function, ownProps): Object {
          * @returns {void}
          */
         _onClick() {
-            const { participant, tileView } = ownProps;
+            const { participant, tileView, videoType } = ownProps;
 
             if (tileView) {
                 dispatch(toggleToolboxVisible());
             } else {
-                dispatch(pinParticipant(participant.pinned ? null : participant.id));
+                dispatch(pinParticipant(participant.id, videoType));
             }
         },
 
@@ -253,12 +260,12 @@ function _mapStateToProps(state, ownProps) {
     // the stage i.e. as a large video.
     const largeVideo = state['features/large-video'];
     const tracks = state['features/base/tracks'];
-    const { participant } = ownProps;
+    const { participant, videoType } = ownProps;
     const id = participant.id;
     const audioTrack
         = getTrackByMediaTypeAndParticipant(tracks, MEDIA_TYPE.AUDIO, id);
     const videoTrack
-        = getTrackByMediaTypeAndParticipant(tracks, MEDIA_TYPE.VIDEO, id);
+        = getTrackByMediaTypeAndParticipant(tracks, MEDIA_TYPE.VIDEO, id, videoType);
     const participantCount = getParticipantCount(state);
     const renderDominantSpeakerIndicator = participant.dominantSpeaker && participantCount > 2;
     const _isEveryoneModerator = isEveryoneModerator(state);

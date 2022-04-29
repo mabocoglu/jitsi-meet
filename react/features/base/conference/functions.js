@@ -8,7 +8,8 @@ import {
     hiddenParticipantJoined,
     hiddenParticipantLeft,
     participantJoined,
-    participantLeft
+    participantLeft,
+    participantStoppedScreenShare
 } from '../participants';
 import { toState } from '../redux';
 import { safeDecodeURIComponent } from '../util';
@@ -106,6 +107,25 @@ export function commonUserLeftHandling(
         dispatch(participantLeft(id, conference));
     }
 }
+
+/**
+ * Logic shared between web and RN which processes the {@code USER_STOPPED_SCREEN_SHARING}
+ * conference event and dispatches {@link participantStoppedScreenShare}.
+ *
+ * @param {Object} store - The redux store.
+ * @param {JitsiMeetConference} conference - The conference for which the
+ * {@code USER_STOPPED_SCREEN_SHARING} event is being processed.
+ * @param {JitsiParticipant} user - The user who has just left.
+ * @returns {void}
+ */
+export function commonUserStoppedScreenSharingHandling(
+    { dispatch }: Object,
+    conference: Object,
+    user: Object) {
+    const id = user.getId();
+    dispatch(participantStoppedScreenShare(id, conference));
+}
+
 
 /**
  * Evaluates a specific predicate for each {@link JitsiConference} known to the

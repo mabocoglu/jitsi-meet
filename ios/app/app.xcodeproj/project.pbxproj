@@ -757,6 +757,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.jitsi.meet;
 				PRODUCT_NAME = "jitsi-meet";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				VALIDATE_WORKSPACE = YES;
 			};
 			name = Debug;
 		};
@@ -791,6 +792,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.jitsi.meet;
 				PRODUCT_NAME = "jitsi-meet";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				VALIDATE_WORKSPACE = YES;
 			};
 			name = Release;
 		};
